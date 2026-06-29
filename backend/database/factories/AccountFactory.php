@@ -1,0 +1,28 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Account;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Account>
+ */
+class AccountFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'name' => fake()->name(),
+            'description' => fake()->sentence(),
+            'remuneration_rate' => fake()->randomFloat(2, 0, 100),
+            'tax_rate' => fake()->randomFloat(2, 0, 100),
+            'user_id' => random_int(1, 10),
+        ];
+    }
+}
