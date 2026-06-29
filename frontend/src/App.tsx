@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/context/AuthContext"
 import { AccountsPage } from "@/pages/AccountsPage"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { LandingPage } from "@/pages/LandingPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { RegisterPage } from "@/pages/RegisterPage"
 
@@ -14,6 +15,8 @@ function AppLayout() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <Routes>
+        <Route path="/" element={<LandingPage />} />
+
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -24,8 +27,7 @@ function AppLayout() {
           <Route path="/accounts" element={<AccountsPage />} />
         </Route>
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   )
