@@ -1,4 +1,6 @@
-import { CalendarDays, Mail, User } from "lucide-react"
+import { Link } from "react-router-dom"
+import { CalendarDays, Mail, User, Wallet } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -71,12 +73,17 @@ export function DashboardPage() {
             You&apos;re all set. This is your home base in Budgie.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Your account is active and connected to the API. Use the navigation
-            bar to sign out when you&apos;re done. More features can be added here
-            as your project grows.
+            Your account is active and connected to the API. Head to Accounts to
+            create and manage your financial accounts.
           </p>
+          <Button asChild>
+            <Link to="/accounts">
+              <Wallet className="size-4" />
+              Manage accounts
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </div>
