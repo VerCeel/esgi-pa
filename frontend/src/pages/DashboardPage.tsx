@@ -1,25 +1,25 @@
-import { Link } from "react-router-dom"
-import { CalendarDays, Mail, User, Wallet } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Link } from "react-router-dom";
+import { CalendarDays, Mail, User, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { useAuth } from "@/context/AuthContext"
+} from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString(undefined, {
     year: "numeric",
     month: "long",
     day: "numeric",
-  })
+  });
 }
 
 export function DashboardPage() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
@@ -87,5 +87,5 @@ export function DashboardPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

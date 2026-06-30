@@ -78,6 +78,7 @@ class ExpenseController extends Controller
                 'frequency_months' => $request['frequency_months'] ?? $expense->frequency_months,
                 'start_date_time' => $request['start_date_time'] ?? $expense->start_date_time,
                 'end_date_time' => $request['end_date_time'] ?? $expense->end_date_time,
+                'account_id' => $request['account_id'] ?? $expense->account_id,
             ]
         );
         $expense->save();

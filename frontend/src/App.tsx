@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/context/AuthContext"
 import { AccountsPage } from "@/pages/AccountsPage"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { ExpensesPage } from "@/pages/ExpensesPage"
 import { LandingPage } from "@/pages/LandingPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { RegisterPage } from "@/pages/RegisterPage"
@@ -25,6 +26,7 @@ function AppLayout() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/expenses" element={<ExpensesPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

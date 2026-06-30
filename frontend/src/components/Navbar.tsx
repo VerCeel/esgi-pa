@@ -4,6 +4,7 @@ import {
   Bird,
   LayoutDashboard,
   LogOut,
+  Receipt,
   Settings,
   Wallet,
 } from "lucide-react"
@@ -25,6 +26,7 @@ import { useAuth } from "@/context/AuthContext"
 const appNavLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/accounts", label: "Accounts", icon: Wallet },
+  { to: "/expenses", label: "Expenses", icon: Receipt },
 ]
 
 export function Navbar() {
