@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ExpenseController;
 
 
 
@@ -14,7 +15,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 
 Route::group(['middleware' => 'auth:sanctum'], function () {
-    
+    Route::apiResource('/expenses', ExpenseController::class);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -25,6 +26,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
         Route::get('/', 'show');
         Route::patch('/', 'update');
     });
+
 
     
 });
