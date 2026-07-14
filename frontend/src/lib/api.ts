@@ -25,13 +25,28 @@ export interface User {
   avatar?: string | null
   avatar_url?: string | null
   email_verified_at: string | null
+  two_factor_enabled: boolean
   created_at: string
   updated_at: string
 }
 
+/**
+ * Le login a deux issues possibles :
+ * - pas de 2FA -> `token` est présent, on est connecté.
+ * - 2FA actif  -> `two_factor` vaut true et on reçoit un `login_token` temporaire,
+ *   qui ne donne accès à rien tant qu'il n'est pas échangé sur /2fa/challenge.
+ */
 export interface LoginResponse {
   message: string
-  token: string
+  two_factor: boolean
+  token?: string
+  login_token?: string
+}
+
+export interface TwoFactorChallengeInput {
+  login_token: string
+  code?: string
+  recovery_code?: string
 }
 
 export interface ValidationErrors {
@@ -40,6 +55,14 @@ export interface ValidationErrors {
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const { data } = await api.post<LoginResponse>("/login", { email, password })
+  return data
+}
+
+/** Second facteur : échange le login_token contre un vrai token Sanctum. */
+export async function twoFactorChallenge(
+  input: TwoFactorChallengeInput,
+): Promise<{ token: string }> {
+  const { data } = await api.post<{ token: string }>("/2fa/challenge", input)
   return data
 }
 

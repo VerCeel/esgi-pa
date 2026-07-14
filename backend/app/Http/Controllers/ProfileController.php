@@ -67,6 +67,7 @@ class ProfileController extends Controller
                 ? '/storage/' . $user->avatar
                 : null,
             'email_verified_at' => $user->email_verified_at,
+            'two_factor_enabled' => $user->hasTwoFactorEnabled(),
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,
         ];

@@ -14,17 +14,26 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/context/AuthContext"
 import { getErrorMessage, getFieldErrors } from "@/lib/api"
 import { updateProfile } from "@/lib/profile"
+import type { TwoFactorMode } from "@/components/profile/two-factor-dialog"
 
 interface ProfileEditDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Ouvre le dialog 2FA — il vit à côté de celui-ci pour ne pas imbriquer deux modales. */
+  onManageTwoFactor: (mode: TwoFactorMode) => void
 }
 
-export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps) {
+export function ProfileEditDialog({
+  open,
+  onOpenChange,
+  onManageTwoFactor,
+}: ProfileEditDialogProps) {
   const { user, updateUser } = useAuth()
+  const twoFactorEnabled = user?.two_factor_enabled ?? false
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [name, setName] = useState("")
@@ -232,6 +241,37 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
                 </p>
               )}
             </div>
+          </div>
+
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="two-factor" className="text-sm font-medium">
+                  Two-factor authentication
+                </Label>
+                <p className="text-muted-foreground text-xs">
+                  Ask for a code from your authenticator app every time you sign in.
+                </p>
+              </div>
+              <Switch
+                id="two-factor"
+                checked={twoFactorEnabled}
+                onCheckedChange={(checked) =>
+                  onManageTwoFactor(checked ? "setup" : "disable")
+                }
+              />
+            </div>
+
+            {twoFactorEnabled && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onManageTwoFactor("recovery")}
+              >
+                Generate new recovery codes
+              </Button>
+            )}
           </div>
 
           <DialogFooter>

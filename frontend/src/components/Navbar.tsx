@@ -9,6 +9,10 @@ import {
   Wallet,
 } from "lucide-react"
 import { ProfileEditDialog } from "@/components/profile/profile-edit-dialog"
+import {
+  TwoFactorDialog,
+  type TwoFactorMode,
+} from "@/components/profile/two-factor-dialog"
 import { ThemeToggleInline } from "@/components/theme-toggle-inline"
 import { UserAvatar } from "@/components/UserAvatar"
 import { Button } from "@/components/ui/button"
@@ -35,10 +39,20 @@ export function Navbar() {
   const location = useLocation()
   const isLanding = location.pathname === "/"
   const [profileOpen, setProfileOpen] = useState(false)
+  const [twoFactorOpen, setTwoFactorOpen] = useState(false)
+  const [twoFactorMode, setTwoFactorMode] = useState<TwoFactorMode>("setup")
 
   async function handleLogout() {
     await logout()
     navigate("/")
+  }
+
+  // Les deux dialogs sont frères : on ferme les paramètres avant d'ouvrir celui du 2FA,
+  // plutôt que d'empiler deux modales l'une sur l'autre.
+  function handleManageTwoFactor(mode: TwoFactorMode) {
+    setProfileOpen(false)
+    setTwoFactorMode(mode)
+    setTwoFactorOpen(true)
   }
 
   return (
@@ -47,7 +61,7 @@ export function Navbar() {
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-6">
             <Link
-              to={isAuthenticated ? "/dashboard" : "/"}
+              to={"/"}
               className="flex items-center gap-2"
             >
               <Bird className="size-6 text-primary" />
@@ -133,7 +147,16 @@ export function Navbar() {
         </div>
       </header>
 
-      <ProfileEditDialog open={profileOpen} onOpenChange={setProfileOpen} />
+      <ProfileEditDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        onManageTwoFactor={handleManageTwoFactor}
+      />
+      <TwoFactorDialog
+        open={twoFactorOpen}
+        onOpenChange={setTwoFactorOpen}
+        mode={twoFactorMode}
+      />
     </>
   )
 }

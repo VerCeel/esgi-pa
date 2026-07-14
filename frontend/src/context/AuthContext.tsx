@@ -12,14 +12,25 @@ import {
   login as apiLogin,
   logout as apiLogout,
   register as apiRegister,
+  twoFactorChallenge as apiTwoFactorChallenge,
+  type TwoFactorChallengeInput,
   type User,
 } from "@/lib/api"
+
+/**
+ * Le login ne connecte plus forcément du premier coup : si le compte a le 2FA actif,
+ * il rend un login_token que la page de login doit échanger contre un vrai token.
+ */
+export type LoginResult =
+  | { twoFactorRequired: false }
+  | { twoFactorRequired: true; loginToken: string }
 
 interface AuthContextValue {
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<LoginResult>
+  completeTwoFactorLogin: (input: TwoFactorChallengeInput) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   updateUser: (user: User) => void
@@ -47,22 +58,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, [])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { token } = await apiLogin(email, password)
+  const establishSession = useCallback(async (token: string) => {
     localStorage.setItem("token", token)
-    const userData = await getUser()
-    setUser(userData)
+    setUser(await getUser())
   }, [])
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginResult> => {
+      const response = await apiLogin(email, password)
+
+      if (response.two_factor && response.login_token) {
+        // Mot de passe validé, mais pas de session tant que le code n'est pas fourni.
+        return { twoFactorRequired: true, loginToken: response.login_token }
+      }
+
+      await establishSession(response.token!)
+      return { twoFactorRequired: false }
+    },
+    [establishSession],
+  )
+
+  const completeTwoFactorLogin = useCallback(
+    async (input: TwoFactorChallengeInput) => {
+      const { token } = await apiTwoFactorChallenge(input)
+      await establishSession(token)
+    },
+    [establishSession],
+  )
 
   const register = useCallback(
     async (name: string, email: string, password: string) => {
       await apiRegister(name, email, password)
+      // Un compte tout juste créé n'a jamais le 2FA : le token est toujours là.
       const { token } = await apiLogin(email, password)
-      localStorage.setItem("token", token)
-      const userData = await getUser()
-      setUser(userData)
+      await establishSession(token!)
     },
-    [],
+    [establishSession],
   )
 
   const logout = useCallback(async () => {
@@ -89,12 +120,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isAuthenticated: !!user,
       login,
+      completeTwoFactorLogin,
       register,
       logout,
       updateUser,
       refreshUser,
     }),
-    [user, isLoading, login, register, logout, updateUser, refreshUser],
+    [
+      user,
+      isLoading,
+      login,
+      completeTwoFactorLogin,
+      register,
+      logout,
+      updateUser,
+      refreshUser,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
