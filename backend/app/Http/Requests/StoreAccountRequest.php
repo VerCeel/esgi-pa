@@ -25,8 +25,11 @@ class StoreAccountRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
-            'remuneration_rate' => ['nullable', 'numeric', 'min:0'],
-            'tax_rate' => ['nullable', 'numeric', 'min:0'],
+            // Date d'ouverture réelle du compte : c'est le point de départ des prévisions.
+            'creation_date' => ['nullable', 'date'],
+            // Les deux taux sont des pourcentages : au-delà de 100 % ça n'a plus de sens.
+            'remuneration_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
 }

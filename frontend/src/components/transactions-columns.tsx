@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { CalendarClock, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -13,18 +13,33 @@ import {
   formatAmount,
   formatDateTime,
   formatFrequency,
-  type ExpenseWithAccount,
-} from "@/lib/expenses"
+  type Recurrence,
+} from "@/lib/format"
 
-interface ExpenseColumnActions {
-  onEdit: (expense: ExpenseWithAccount) => void
-  onDelete: (expense: ExpenseWithAccount) => void
+/** Le socle commun aux dépenses et aux revenus, tels que les affiche le tableau. */
+export interface TransactionRow extends Recurrence {
+  id: number
+  name: string
+  amount: string | number
+  start_date_time: string | null
+  end_date_time: string | null
+  account_name: string
 }
 
-export function getExpenseColumns({
+interface TransactionColumnActions<T> {
+  onEdit: (item: T) => void
+  onDelete: (item: T) => void
+  onManageExceptions: (item: T) => void
+  /** Les dépenses s'affichent en rouge, les revenus en vert. */
+  tone: "expense" | "income"
+}
+
+export function getTransactionColumns<T extends TransactionRow>({
   onEdit,
   onDelete,
-}: ExpenseColumnActions): ColumnDef<ExpenseWithAccount>[] {
+  onManageExceptions,
+  tone,
+}: TransactionColumnActions<T>): ColumnDef<T>[] {
   return [
     {
       accessorKey: "name",
@@ -41,7 +56,18 @@ export function getExpenseColumns({
     {
       accessorKey: "amount",
       header: "Amount",
-      cell: ({ row }) => formatAmount(row.getValue("amount")),
+      cell: ({ row }) => (
+        <span
+          className={
+            tone === "income"
+              ? "text-brand-cyan font-medium"
+              : "text-brand-pink font-medium"
+          }
+        >
+          {tone === "income" ? "+" : "−"}
+          {formatAmount(row.getValue("amount"))}
+        </span>
+      ),
     },
     {
       id: "frequency",
@@ -62,7 +88,7 @@ export function getExpenseColumns({
       id: "actions",
       enableHiding: false,
       cell: ({ row }) => {
-        const expense = row.original
+        const item = row.original
 
         return (
           <DropdownMenu>
@@ -75,13 +101,17 @@ export function getExpenseColumns({
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onEdit(expense)}>
+              <DropdownMenuItem onClick={() => onEdit(item)}>
                 <Pencil className="size-4" />
                 Edit
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onManageExceptions(item)}>
+                <CalendarClock className="size-4" />
+                Exceptions
+              </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => onDelete(expense)}
+                onClick={() => onDelete(item)}
               >
                 <Trash2 className="size-4" />
                 Delete

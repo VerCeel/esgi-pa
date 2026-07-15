@@ -1,8 +1,9 @@
-import { Navigate, Outlet } from "react-router-dom"
+import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 
 export function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth()
+  const location = useLocation()
 
   if (isLoading) {
     return (
@@ -13,7 +14,10 @@ export function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    // On mémorise la page visée pour y revenir après connexion. Sans ça, un invité qui
+    // clique le lien de partage reçu par email atterrirait sur le dashboard, et son
+    // invitation ne serait jamais acceptée.
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   return <Outlet />

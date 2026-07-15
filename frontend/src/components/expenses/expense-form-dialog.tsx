@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -23,10 +24,9 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { getAccounts, type Account } from "@/lib/accounts"
 import { getErrorMessage, getFieldErrors } from "@/lib/api"
+import { toApiDateTime } from "@/lib/format"
 import {
   createExpense,
-  toApiDateTime,
-  toInputDateTime,
   updateExpense,
   type ExpenseInput,
   type ExpenseWithAccount,
@@ -87,8 +87,8 @@ export function ExpenseFormDialog({
           end_date_time: expense.end_date_time ?? "",
           account_id: expense.account_id,
         })
-        setStartDate(toInputDateTime(expense.start_date_time))
-        setEndDate(toInputDateTime(expense.end_date_time))
+        setStartDate(toApiDateTime(expense.start_date_time))
+        setEndDate(toApiDateTime(expense.end_date_time))
       } else {
         setForm(emptyForm)
         setStartDate("")
@@ -292,16 +292,14 @@ export function ExpenseFormDialog({
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="expense-start">Start date</Label>
-              <Input
+              <DateTimePicker
                 id="expense-start"
-                type="datetime-local"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-                aria-invalid={!!fieldErrors.start_date_time}
+                onChange={setStartDate}
+                invalid={!!fieldErrors.start_date_time}
               />
               {fieldErrors.start_date_time && (
                 <p className="text-destructive text-sm">
@@ -312,12 +310,12 @@ export function ExpenseFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="expense-end">End date (optional)</Label>
-              <Input
+              <DateTimePicker
                 id="expense-end"
-                type="datetime-local"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                aria-invalid={!!fieldErrors.end_date_time}
+                onChange={setEndDate}
+                invalid={!!fieldErrors.end_date_time}
+                placeholder="No end date"
               />
               {fieldErrors.end_date_time && (
                 <p className="text-destructive text-sm">
@@ -335,7 +333,12 @@ export function ExpenseFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !form.account_id}>
+            {/* Le picker n'est pas un <input>, il ne peut donc pas porter `required` :
+                c'est le bouton qui garde la contrainte. */}
+            <Button
+              type="submit"
+              disabled={isSubmitting || !form.account_id || !startDate}
+            >
               {isSubmitting
                 ? isEditing
                   ? "Saving..."

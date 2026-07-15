@@ -2,110 +2,142 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesAccounts;
 use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\UpdateAccountRequest;
 use App\Models\Account;
+use App\Services\ForecastService;
+use App\Services\PlanLimits;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 
 class AccountController extends Controller
 {
+    use ResolvesAccounts;
+
+    public function __construct(
+        private ForecastService $forecast,
+        private PlanLimits $planLimits,
+    ) {}
+
     /**
-     * Display a listing of the resource.
+     * Les comptes possédés, chacun avec son solde à aujourd'hui.
+     * Le sujet exige le solde aussi bien dans la liste que dans le détail.
      */
     public function index()
     {
-        $currentUser = Auth::user();
-        $accounts = $currentUser->accounts;
-        return response()->json($accounts);
+        $accounts = Auth::user()
+            ->accounts()
+            ->with(['expenses.exceptions', 'incomes.exceptions'])
+            ->get();
+
+        return response()->json(
+            $accounts->map(fn (Account $account) => $this->withBalance($account)),
+            200,
+        );
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    /** Les comptes qu'on m'a partagés : mêmes données, mais en lecture seule. */
+    public function shared()
     {
-        //
+        $accounts = Auth::user()
+            ->sharedAccounts()
+            ->with(['expenses.exceptions', 'incomes.exceptions', 'user:id,name,email'])
+            ->get();
+
+        return response()->json(
+            $accounts->map(fn (Account $account) => [
+                ...$this->withBalance($account),
+                'read_only' => true,
+                'owner' => $account->user?->only(['id', 'name', 'email']),
+            ]),
+            200,
+        );
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreAccountRequest $request)
     {
+        $user = Auth::user();
+
+        if (! $this->planLimits->canCreateAccount($user)) {
+            return response()->json([
+                'message' => 'Your free plan is limited to ' . PlanLimits::FREE_MAX_ACCOUNTS
+                    . ' accounts. Upgrade to add more.',
+            ], 403);
+        }
+
         $validated = $request->validated();
-        $currentUser = Auth::user();
-        $account = Account::create(
-            [
-                'name' => $validated['name'],
-                'description' => $validated['description'],
-                'remuneration_rate' => $validated['remuneration_rate'],
-                'tax_rate' => $validated['tax_rate'],
-                'user_id' => $currentUser->id ?? null,
-            ]
-        );
-        return response()->json($account, 201);
-        
+
+        $account = Account::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            // Par défaut, le compte est réputé ouvert aujourd'hui.
+            'creation_date' => $validated['creation_date'] ?? CarbonImmutable::now()->toDateString(),
+            'remuneration_rate' => $validated['remuneration_rate'] ?? 0,
+            'tax_rate' => $validated['tax_rate'] ?? 0,
+            'user_id' => $user->id,
+        ]);
+
+        return response()->json($this->withBalance($account), 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(int $id)
     {
-        $account = Account::find($id);
-        $currentUser = Auth::user();
-        if (!$account || $account->user_id !== $currentUser->id) {
+        $account = $this->readableAccount(Auth::user(), $id);
+
+        if (! $account) {
             return response()->json(['message' => 'Account not found'], 404);
         }
-        return response()->json($account, 200);
+
+        $account->load(['expenses.exceptions', 'incomes.exceptions']);
+
+        return response()->json([
+            ...$this->withBalance($account),
+            'expenses' => $account->expenses,
+            'incomes' => $account->incomes,
+            // Un invité voit tout, mais ne peut rien modifier.
+            'read_only' => $account->user_id !== Auth::id(),
+        ], 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Account $account)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateAccountRequest $request, int $id)
     {
-        $validated = $request->validated();
-        $account = Account::find($id);
-        $currentUser = Auth::user();
-        if (!$account || $account->user_id !== $currentUser->id) {
+        $account = $this->ownedAccount(Auth::user(), $id);
+
+        if (! $account) {
             return response()->json(['message' => 'Account not found'], 404);
         }
-        if (!empty($validated['name'])) {
-            $account->name = $validated['name'];
+
+        $account->update($request->validated());
+
+        return response()->json($this->withBalance($account->fresh()), 200);
+    }
+
+    public function destroy(int $id)
+    {
+        $account = $this->ownedAccount(Auth::user(), $id);
+
+        if (! $account) {
+            return response()->json(['message' => 'Account not found'], 404);
         }
-        if (!empty($validated['description'])) {
-            $account->description = $validated['description'];
-        }
-        if (!empty($validated['remuneration_rate'])) {
-            $account->remuneration_rate = $validated['remuneration_rate'];
-        }
-        if (!empty($validated['tax_rate'])) {
-            $account->tax_rate = $validated['tax_rate'];
-        }
-        $account->save();
-        return response()->json($account, 200);
+
+        $account->delete();
+
+        return response()->json(['message' => 'Account deleted successfully'], 200);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Le solde d'aujourd'hui, c'est la prévision au mois courant : même moteur que la page
+     * de prévisions, pour que les deux ne puissent pas afficher des chiffres différents.
      */
-    public function destroy(int $id)
+    private function withBalance(Account $account): array
     {
-        $account = Account::find($id);
-        $currentUser = Auth::user();
-        if (!$account || $account->user_id !== $currentUser->id) {
-            return response()->json(['message' => 'Account not found'], 404);
-        }
-        $account->delete();
-        return response()->json(['message' => 'Account deleted successfully'], 200);
+        $projection = $this->forecast->accountBalance($account, CarbonImmutable::now());
+
+        return [
+            ...$account->toArray(),
+            'balance' => $projection['balance'],
+            'total_interest' => $projection['total_interest'],
+        ];
     }
 }

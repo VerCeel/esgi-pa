@@ -23,10 +23,13 @@ class UpdateAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['nullable', 'string', 'max:255'],
+            'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
-            'remuneration_rate' => ['nullable', 'numeric', 'min:0'],
-            'tax_rate' => ['nullable', 'numeric', 'min:0'],
+            'creation_date' => ['sometimes', 'date'],
+            // Un taux à 0 est légitime (compte courant) : `sometimes` et pas `nullable`,
+            // sinon `!empty()` côté contrôleur avalerait silencieusement la valeur 0.
+            'remuneration_rate' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'tax_rate' => ['sometimes', 'numeric', 'min:0', 'max:100'],
         ];
     }
 }

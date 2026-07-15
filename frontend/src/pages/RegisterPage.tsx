@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -15,9 +15,20 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/AuthContext"
 import { getErrorMessage, getFieldErrors } from "@/lib/api"
 
+interface RedirectState {
+  from?: { pathname: string }
+}
+
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Un invité de partage n'a souvent pas encore de compte : après inscription, il doit
+  // repartir vers le lien d'invitation, pas vers le dashboard.
+  const redirectTo =
+    (location.state as RedirectState | null)?.from?.pathname ?? "/dashboard"
+
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -33,7 +44,7 @@ export function RegisterPage() {
 
     try {
       await register(name, email, password)
-      navigate("/dashboard")
+      navigate(redirectTo)
     } catch (err) {
       const errors = getFieldErrors(err)
       if (Object.keys(errors).length > 0) {
@@ -130,7 +141,11 @@ export function RegisterPage() {
 
           <p className="text-muted-foreground mt-6 text-center text-sm">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary font-medium hover:underline">
+            <Link
+              to="/login"
+              state={location.state}
+              className="text-primary font-medium hover:underline"
+            >
               Sign in
             </Link>
           </p>

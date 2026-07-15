@@ -1,13 +1,16 @@
 import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
-  Bird,
+  CreditCard,
   LayoutDashboard,
   LogOut,
+  PiggyBank,
   Receipt,
   Settings,
+  Users,
   Wallet,
 } from "lucide-react"
+import { BudgieLogo } from "@/components/BudgieLogo"
 import { ProfileEditDialog } from "@/components/profile/profile-edit-dialog"
 import {
   TwoFactorDialog,
@@ -31,6 +34,7 @@ const appNavLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/accounts", label: "Accounts", icon: Wallet },
   { to: "/expenses", label: "Expenses", icon: Receipt },
+  { to: "/incomes", label: "Incomes", icon: PiggyBank },
 ]
 
 export function Navbar() {
@@ -64,7 +68,7 @@ export function Navbar() {
               to={"/"}
               className="flex items-center gap-2"
             >
-              <Bird className="size-6 text-primary" />
+              <BudgieLogo className="size-6" />
               <span className="text-lg font-semibold tracking-tight">Budgie</span>
             </Link>
 
@@ -125,6 +129,19 @@ export function Navbar() {
                     <Settings className="size-4" />
                     Edit profile
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/shared">
+                      <Users className="size-4" />
+                      Shared with me
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings/billing">
+                      <CreditCard className="size-4" />
+                      Billing
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="size-4" />
                     Log out

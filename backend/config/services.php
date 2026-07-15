@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    /*
+     * Aucune clé n'est écrite en dur ici : tout vient du .env, qui n'est pas versionné.
+     * `price` est l'identifiant du tarif d'abonnement créé dans le dashboard Stripe.
+     */
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'price' => env('STRIPE_PRICE_ID'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
 ];

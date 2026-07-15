@@ -2,100 +2,111 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\FiltersTransactions;
+use App\Http\Controllers\Concerns\ResolvesAccounts;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\UpdateExpenseRequest;
+use App\Models\Account;
 use App\Models\Expense;
+use App\Services\PlanLimits;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ExpenseController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        $currentUser = Auth::user();
-        $expenses = $currentUser->accounts()->with('expenses')->get();
-        return response()->json($expenses, 200);
-    }
+    use FiltersTransactions, ResolvesAccounts;
+
+    public function __construct(private PlanLimits $planLimits) {}
 
     /**
-     * Show the form for creating a new resource.
+     * Liste plate des dépenses, filtrable par nom court ou description (?search=)
+     * et restreignable à un compte (?account_id=).
+     *
+     * Les comptes partagés apparaissent aussi : l'invité doit voir leurs dépenses.
      */
-    public function create()
+    public function index(Request $request)
     {
-        //
+        $user = Auth::user();
+
+        $query = Expense::query()
+            ->with('account:id,name')
+            ->whereIn('account_id', $this->readableAccountIds($user));
+
+        if ($accountId = $request->query('account_id')) {
+            $query->where('account_id', $accountId);
+        }
+
+        $this->applySearch($query, $request->query('search'));
+
+        return response()->json($query->latest('id')->get(), 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreExpenseRequest $request)
     {
         $validated = $request->validated();
-        $expense = Expense::create($validated);
-        return response()->json($expense, 201);
+        $user = Auth::user();
+
+        // Le compte appartient forcément à l'utilisateur : la Form Request l'a vérifié.
+        $account = Account::find($validated['account_id']);
+
+        if (! $this->planLimits->canCreateExpense($user, $account)) {
+            return response()->json([
+                'message' => 'Your free plan is limited to ' . PlanLimits::FREE_MAX_EXPENSES_PER_ACCOUNT
+                    . ' expenses per account. Upgrade to add more.',
+            ], 403);
+        }
+
+        return response()->json(Expense::create($validated), 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(int $id)
     {
-        $expense = Expense::find($id);
-        $currentUser = Auth::user();
-        if (!$expense || $expense->account->user_id !== $currentUser->id) {
+        $expense = $this->findReadable($id);
+
+        if (! $expense) {
             return response()->json(['message' => 'Expense not found'], 404);
         }
-        return response()->json($expense, 200);
+
+        return response()->json($expense->load('exceptions'), 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Expense $expense)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateExpenseRequest $request, int $id)
     {
-        $expense = Expense::find($id);
-        $currentUser = Auth::user();
-        if (!$expense || $expense->account->user_id !== $currentUser->id) {
+        $expense = $this->findOwned($id);
+
+        if (! $expense) {
             return response()->json(['message' => 'Expense not found'], 404);
         }
-        $validated = $request->validated();
-        $expense->update(
-            [
-                'name' => $request['name'] ?? $expense->name,
-                'description' => $request['description'] ?? $expense->description,
-                'amount' => $request['amount'] ?? $expense->amount,
-                'frequency_type' => $request['frequency_type'] ?? $expense->frequency_type,
-                'frequency_months' => $request['frequency_months'] ?? $expense->frequency_months,
-                'start_date_time' => $request['start_date_time'] ?? $expense->start_date_time,
-                'end_date_time' => $request['end_date_time'] ?? $expense->end_date_time,
-                'account_id' => $request['account_id'] ?? $expense->account_id,
-            ]
-        );
-        $expense->save();
+
+        $expense->update($request->validated());
+
         return response()->json($expense, 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(int $id)
     {
-        $expense = Expense::find($id);
-        $currentUser = Auth::user();
-        if (!$expense || $expense->account->user_id !== $currentUser->id) {
+        $expense = $this->findOwned($id);
+
+        if (! $expense) {
             return response()->json(['message' => 'Expense not found'], 404);
         }
+
         $expense->delete();
+
         return response()->json(['message' => 'Expense deleted successfully'], 200);
+    }
+
+    /** Lisible = compte possédé ou partagé. */
+    private function findReadable(int $id): ?Expense
+    {
+        return Expense::whereKey($id)
+            ->whereIn('account_id', $this->readableAccountIds(Auth::user()))
+            ->first();
+    }
+
+    /** Modifiable = compte possédé uniquement, un partage restant en lecture seule. */
+    private function findOwned(int $id): ?Expense
+    {
+        return $this->scopeToOwnedAccounts(Expense::whereKey($id), Auth::user())->first();
     }
 }

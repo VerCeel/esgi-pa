@@ -4,41 +4,42 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreExpenseRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-
-        //TODO: Add validation in the controller if the frequency_type is RECURRING, then frequency_months is required
-        //if the frequency_type is ONCE, then frequency_months is not required
-        //if the frequency_type is RECURRING, then start_date_time is required and must be in the future
-        //if the frequency_type is ONCE, then start_date_time is not required and must be in the future
-        //if the frequency_type is RECURRING, then end_date_time is not required and must be in the future
-        //if the frequency_type is ONCE, then end_date_time is required and must be in the future
-        
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0'],
             'frequency_type' => ['required', 'in:ONCE,RECURRING'],
-            'frequency_months' => ['nullable', 'integer'],
-            'start_date_time' => ['required', 'date_format:Y-m-d H:i:s'],
-            'end_date_time' => ['nullable', 'date_format:Y-m-d H:i:s'],
-            'account_id' => ['required', 'exists:accounts,id'],
+            // "Tous les N mois" n'a de sens que pour une récurrence, et N doit valoir au moins 1.
+            'frequency_months' => ['nullable', 'required_if:frequency_type,RECURRING', 'integer', 'min:1', 'max:600'],
+            'start_date_time' => ['required', 'date'],
+            'end_date_time' => ['nullable', 'date', 'after_or_equal:start_date_time'],
+            // On ne peut rattacher une dépense qu'à un compte dont on est propriétaire :
+            // un simple `exists:accounts,id` laisserait écrire dans le compte de n'importe qui.
+            'account_id' => [
+                'required',
+                Rule::exists('accounts', 'id')->where('user_id', $this->user()->id),
+            ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'account_id.exists' => 'The selected account does not exist or does not belong to you.',
         ];
     }
 }

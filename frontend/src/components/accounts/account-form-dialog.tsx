@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,6 +22,7 @@ import {
   type AccountInput,
 } from "@/lib/accounts"
 import { getErrorMessage, getFieldErrors } from "@/lib/api"
+import { toInputDate } from "@/lib/format"
 
 interface AccountFormDialogProps {
   open: boolean
@@ -32,6 +34,7 @@ interface AccountFormDialogProps {
 const emptyForm: AccountInput = {
   name: "",
   description: "",
+  creation_date: "",
   remuneration_rate: null,
   tax_rate: null,
 }
@@ -54,6 +57,7 @@ export function AccountFormDialog({
         setForm({
           name: account.name,
           description: account.description ?? "",
+          creation_date: toInputDate(account.creation_date),
           remuneration_rate: account.remuneration_rate
             ? Number(account.remuneration_rate)
             : null,
@@ -154,6 +158,26 @@ export function AccountFormDialog({
             {fieldErrors.description && (
               <p className="text-destructive text-sm">
                 {fieldErrors.description}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="account-creation-date">Opening date</Label>
+            <DatePicker
+              id="account-creation-date"
+              value={form.creation_date ?? ""}
+              onChange={(value) => updateField("creation_date", value)}
+              invalid={!!fieldErrors.creation_date}
+              placeholder="Today"
+            />
+            <p className="text-muted-foreground text-xs">
+              When the account was actually opened. Forecasts start from this date.
+              Defaults to today.
+            </p>
+            {fieldErrors.creation_date && (
+              <p className="text-destructive text-sm">
+                {fieldErrors.creation_date}
               </p>
             )}
           </div>

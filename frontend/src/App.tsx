@@ -4,12 +4,16 @@ import { GuestRoute, ProtectedRoute } from "@/components/ProtectedRoute"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/context/AuthContext"
+import { AcceptSharePage } from "@/pages/AcceptSharePage"
 import { AccountsPage } from "@/pages/AccountsPage"
+import { BillingPage } from "@/pages/BillingPage"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { ExpensesPage } from "@/pages/ExpensesPage"
+import { IncomesPage } from "@/pages/IncomesPage"
 import { LandingPage } from "@/pages/LandingPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { RegisterPage } from "@/pages/RegisterPage"
+import { SharedAccountsPage } from "@/pages/SharedAccountsPage"
 
 function AppLayout() {
   return (
@@ -27,6 +31,12 @@ function AppLayout() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/incomes" element={<IncomesPage />} />
+          <Route path="/shared" element={<SharedAccountsPage />} />
+          {/* Cible du lien d'invitation reçu par email. Protégée : se connecter est
+              justement ce qui prouve qu'on possède l'adresse email invitée. */}
+          <Route path="/shared/accept/:token" element={<AcceptSharePage />} />
+          <Route path="/settings/billing" element={<BillingPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

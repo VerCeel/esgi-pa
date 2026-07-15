@@ -1,33 +1,40 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Plus, RefreshCw } from "lucide-react"
+import { Plus } from "lucide-react"
 import { toast } from "sonner"
+import { ExceptionsDialog } from "@/components/exceptions/exceptions-dialog"
 import { DeleteExpenseDialog } from "@/components/expenses/delete-expense-dialog"
 import { ExpenseFormDialog } from "@/components/expenses/expense-form-dialog"
-import { getExpenseColumns } from "@/components/expenses/expenses-columns"
-import { ExpensesDataTable } from "@/components/expenses/expenses-data-table"
+import { getTransactionColumns } from "@/components/transactions-columns"
+import { TransactionsDataTable } from "@/components/transactions-data-table"
+import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
-import { getExpenses, type ExpenseWithAccount } from "@/lib/expenses"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { getErrorMessage } from "@/lib/api"
+import { getExpenses, type ExpenseWithAccount } from "@/lib/expenses"
 
 export function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseWithAccount[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [exceptionsOpen, setExceptionsOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] =
     useState<ExpenseWithAccount | null>(null)
+
+  // Le filtre est appliqué par le serveur, sur le nom court et la description.
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search)
 
   const fetchExpenses = useCallback(async () => {
     setIsLoading(true)
     try {
-      const data = await getExpenses()
-      setExpenses(data)
+      setExpenses(await getExpenses(debouncedSearch))
     } catch (err) {
       toast.error(getErrorMessage(err))
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [debouncedSearch])
 
   useEffect(() => {
     fetchExpenses()
@@ -43,9 +50,20 @@ export function ExpensesPage() {
     setDeleteOpen(true)
   }, [])
 
+  const handleManageExceptions = useCallback((expense: ExpenseWithAccount) => {
+    setSelectedExpense(expense)
+    setExceptionsOpen(true)
+  }, [])
+
   const columns = useMemo(
-    () => getExpenseColumns({ onEdit: handleEdit, onDelete: handleDelete }),
-    [handleEdit, handleDelete],
+    () =>
+      getTransactionColumns<ExpenseWithAccount>({
+        onEdit: handleEdit,
+        onDelete: handleDelete,
+        onManageExceptions: handleManageExceptions,
+        tone: "expense",
+      }),
+    [handleEdit, handleDelete, handleManageExceptions],
   )
 
   function handleCreate() {
@@ -55,31 +73,33 @@ export function ExpensesPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Expenses</h1>
-          <p className="text-muted-foreground mt-1">
-            Track and manage your expenses across accounts.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchExpenses}>
-            <RefreshCw className="size-4" />
-            Refresh
-          </Button>
+      <PageHeader
+        title="Expenses"
+        description="Track and manage your expenses across accounts."
+        actions={
           <Button size="sm" onClick={handleCreate}>
             <Plus className="size-4" />
             New expense
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {isLoading ? (
+      {/* Pendant une recherche, on garde la table à l'écran plutôt que de la remplacer
+          par un écran de chargement à chaque frappe. */}
+      {isLoading && expenses.length === 0 ? (
         <div className="flex h-48 items-center justify-center rounded-md border">
           <p className="text-muted-foreground text-sm">Loading expenses...</p>
         </div>
       ) : (
-        <ExpensesDataTable columns={columns} data={expenses} />
+        <TransactionsDataTable
+          columns={columns}
+          data={expenses}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Filter by name or description..."
+          emptyMessage="No expenses found."
+          countLabel={(count) => `${count} expense(s)`}
+        />
       )}
 
       <ExpenseFormDialog
@@ -94,6 +114,13 @@ export function ExpensesPage() {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onSuccess={fetchExpenses}
+      />
+
+      <ExceptionsDialog
+        open={exceptionsOpen}
+        onOpenChange={setExceptionsOpen}
+        target="expenses"
+        transaction={selectedExpense}
       />
     </div>
   )

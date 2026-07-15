@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { AlertCircle, ArrowLeft, ShieldCheck } from "lucide-react"
 import { OtpField } from "@/components/otp-field"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -16,9 +16,19 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/AuthContext"
 import { getErrorMessage } from "@/lib/api"
 
+interface RedirectState {
+  from?: { pathname: string }
+}
+
 export function LoginPage() {
   const { login, completeTwoFactorLogin } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Là où l'utilisateur voulait aller avant d'être renvoyé ici (un lien de partage, par exemple).
+  const redirectTo =
+    (location.state as RedirectState | null)?.from?.pathname ?? "/dashboard"
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -42,7 +52,7 @@ export function LoginPage() {
         return
       }
 
-      navigate("/dashboard")
+      navigate(redirectTo)
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -63,7 +73,7 @@ export function LoginPage() {
           ? { recovery_code: value.trim() }
           : { code: value.trim() }),
       })
-      navigate("/dashboard")
+      navigate(redirectTo)
     } catch (err) {
       setError(getErrorMessage(err))
       setCode("")
@@ -222,6 +232,7 @@ export function LoginPage() {
                 Don&apos;t have an account?{" "}
                 <Link
                   to="/register"
+                  state={location.state}
                   className="text-primary font-medium hover:underline"
                 >
                   Register

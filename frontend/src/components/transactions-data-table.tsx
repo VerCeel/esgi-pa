@@ -1,14 +1,13 @@
-import { useState } from "react"
 import {
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table"
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -27,11 +26,20 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import type { ExpenseWithAccount } from "@/lib/expenses"
 
-interface ExpensesDataTableProps {
-  columns: ColumnDef<ExpenseWithAccount>[]
-  data: ExpenseWithAccount[]
+interface TransactionsDataTableProps<T> {
+  columns: ColumnDef<T>[]
+  data: T[]
+  /**
+   * Le filtre est piloté par le parent et appliqué **côté serveur** (?search=), pas par
+   * la table : c'est le backend qui cherche dans le nom court et la description, donc
+   * une dépense filtrée reste trouvable même si elle est sur une autre page.
+   */
+  search: string
+  onSearchChange: (value: string) => void
+  searchPlaceholder: string
+  emptyMessage: string
+  countLabel: (count: number) => string
 }
 
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
@@ -56,19 +64,25 @@ function getPageNumbers(current: number, total: number): (number | "ellipsis")[]
   return pages
 }
 
-export function ExpensesDataTable({ columns, data }: ExpensesDataTableProps) {
+/** Table commune aux dépenses et aux revenus : ils ont exactement la même forme. */
+export function TransactionsDataTable<T>({
+  columns,
+  data,
+  search,
+  onSearchChange,
+  searchPlaceholder,
+  emptyMessage,
+  countLabel,
+}: TransactionsDataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = useState("")
 
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting },
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
       pagination: { pageSize: 5 },
@@ -83,13 +97,13 @@ export function ExpensesDataTable({ columns, data }: ExpensesDataTableProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Input
-          placeholder="Filter expenses..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
+          placeholder={searchPlaceholder}
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
           className="max-w-sm"
         />
         <p className="text-muted-foreground ml-auto text-sm">
-          {table.getFilteredRowModel().rows.length} expense(s)
+          {countLabel(data.length)}
         </p>
       </div>
 
@@ -117,21 +131,15 @@ export function ExpensesDataTable({ columns, data }: ExpensesDataTableProps) {
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No expenses found.
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             )}
