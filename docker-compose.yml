@@ -19,15 +19,33 @@ services:
       CACHE_STORE: file
       QUEUE_CONNECTION: sync
       FILESYSTEM_DISK: public
+      # Envoi des emails vers Mailpit. Depuis un conteneur, "127.0.0.1" pointerait vers
+      # le conteneur lui-même : on vise donc le service par son nom, "mailpit".
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
     volumes:
       - backend_database:/var/www/html/database
       - backend_storage:/var/www/html/storage/app/public
+    depends_on:
+      - mailpit
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') ? 0 : 1);"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    restart: unless-stopped
+
+  # Faux serveur SMTP de développement : il attrape tous les emails que l'app envoie
+  # (invitations de partage, etc.) au lieu de les livrer, et les affiche dans une boîte
+  # de réception web. Rien ne part réellement sur Internet.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: budgie-mailpit
+    ports:
+      - "1025:1025" # SMTP — le port où Laravel dépose ses emails
+      - "8025:8025" # interface web — la boîte de réception, sur http://localhost:8025
     restart: unless-stopped
 
   frontend:

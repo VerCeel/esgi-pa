@@ -1,0 +1,98 @@
+# Déploiement production sur un Droplet DigitalOcean.
+# Usage : docker compose -f docker-compose.prod.yml up -d --build
+# Les secrets viennent d'un fichier .env.prod à côté (jamais versionné) : cf. .env.prod.example
+services:
+  # Caddy termine le TLS : il obtient et renouvelle le certificat Let's Encrypt
+  # tout seul, puis passe la main au nginx du frontend (qui route déjà /api et
+  # /storage vers le backend).
+  caddy:
+    image: caddy:2-alpine
+    container_name: budgie-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: budgie-backend
+    # Pas de "ports" : le backend n'est joignable que depuis les autres conteneurs.
+    environment:
+      APP_NAME: Budgie
+      APP_ENV: production
+      APP_DEBUG: "false"
+      # APP_KEY fixé dans .env.prod : sans lui, l'entrypoint en régénérerait un
+      # à chaque recréation du conteneur et invaliderait les données chiffrées.
+      APP_KEY: ${APP_KEY}
+      APP_URL: https://${DOMAIN}
+      FRONTEND_URL: https://${DOMAIN}
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: warning
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /var/www/html/database/database.sqlite
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      FILESYSTEM_DISK: public
+      # Mailpit capture toujours les emails (accessible via tunnel SSH, cf. README
+      # de déploiement). Pour de vrais envois, remplacer par un SMTP réel
+      # (Brevo, Resend, Mailgun…) via les variables MAIL_* dans .env.prod.
+      MAIL_MAILER: smtp
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-null}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-null}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+      MAIL_FROM_NAME: Budgie
+      STRIPE_SECRET: ${STRIPE_SECRET}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+    volumes:
+      - backend_database:/var/www/html/database
+      - backend_storage:/var/www/html/storage/app/public
+    depends_on:
+      - mailpit
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') ? 0 : 1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: budgie-mailpit
+    ports:
+      # Lié à 127.0.0.1 : l'interface web n'est PAS exposée sur Internet.
+      # Pour la consulter : ssh -L 8025:localhost:8025 root@IP_DU_DROPLET
+      # puis ouvrir http://localhost:8025 en local.
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: budgie-frontend
+    # Pas de "ports" : seul Caddy est exposé.
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend_database:
+  backend_storage:
+  caddy_data:
+  caddy_config:
