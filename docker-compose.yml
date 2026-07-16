@@ -37,15 +37,12 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # Faux serveur SMTP de développement : il attrape tous les emails que l'app envoie
-  # (invitations de partage, etc.) au lieu de les livrer, et les affiche dans une boîte
-  # de réception web. Rien ne part réellement sur Internet.
   mailpit:
     image: axllent/mailpit:latest
     container_name: budgie-mailpit
     ports:
-      - "1025:1025" # SMTP — le port où Laravel dépose ses emails
-      - "8025:8025" # interface web — la boîte de réception, sur http://localhost:8025
+      - "1025:1025"
+      - "8025:8025" 
     restart: unless-stopped
 
   frontend:
