@@ -127,8 +127,9 @@ jobs:
             set -e
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             cd /root/budgie
-            docker compose pull
-            docker compose up -d
+            git pull --ff-only
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
         env:
           GHCR_USER: ${{ github.actor }}

@@ -16,9 +16,9 @@ services:
     restart: unless-stopped
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    # Image construite et poussée par la CI (job « docker ») : le serveur ne
+    # rebuild jamais, il tire la même image que celle testée dans le pipeline.
+    image: ghcr.io/verceel/esgi-pa-backend:latest
     container_name: budgie-backend
     environment:
       APP_NAME: Budgie
@@ -66,9 +66,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/verceel/esgi-pa-frontend:latest
     container_name: budgie-frontend
     depends_on:
       backend:
