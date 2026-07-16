@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+import { Footer } from "@/components/Footer"
 import { Navbar } from "@/components/Navbar"
 import { GuestRoute, ProtectedRoute } from "@/components/ProtectedRoute"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -41,6 +42,7 @@ function AppLayout() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Footer />
     </div>
   )
 }

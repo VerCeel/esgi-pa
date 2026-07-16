@@ -81,7 +81,9 @@ function TileIcon({ icon: Icon, tone }: { icon: typeof Wallet; tone: Tone }) {
 export function LandingPage() {
   return (
     <div className="flex flex-1 flex-col">
-      <section className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-4 py-20">
+      {/* -mt-20 = hauteur de la navbar (h-20) : le hero glisse sous la navbar
+          transparente, l'aurora démarre donc au ras du haut de l'écran. */}
+      <section className="relative -mt-20 flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-4 pt-32 pb-20">
         <div className="absolute inset-0 -z-10">
           <Aurora
             colorStops={["#22d3ee", "#ec4899", "#f5b301"]}

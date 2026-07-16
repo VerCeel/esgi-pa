@@ -1,15 +1,6 @@
-import { useState } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import {
-  CreditCard,
-  LayoutDashboard,
-  LogOut,
-  PiggyBank,
-  Receipt,
-  Settings,
-  Users,
-  Wallet,
-} from "lucide-react"
+import { useEffect, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { CreditCard, LogOut, Settings, Users } from "lucide-react"
 import { BudgieLogo } from "@/components/BudgieLogo"
 import { ProfileEditDialog } from "@/components/profile/profile-edit-dialog"
 import {
@@ -30,19 +21,20 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 
-const appNavLinks = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/accounts", label: "Accounts", icon: Wallet },
-  { to: "/expenses", label: "Expenses", icon: Receipt },
-  { to: "/incomes", label: "Incomes", icon: PiggyBank },
-]
-
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const isLanding = location.pathname === "/"
   const [profileOpen, setProfileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  // En haut de page la navbar est invisible (l'aurora passe derrière) ;
+  // dès qu'on scrolle, le fond « verre » apparaît pour garder le texte lisible.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
   const [twoFactorOpen, setTwoFactorOpen] = useState(false)
   const [twoFactorMode, setTwoFactorMode] = useState<TwoFactorMode>("setup")
 
@@ -61,55 +53,34 @@ export function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
-          <div className="flex items-center gap-6">
-            <Link
-              to={"/"}
-              className="flex items-center gap-2"
-            >
-              <BudgieLogo className="size-6" />
-              <span className="text-lg font-semibold tracking-tight">Budgie</span>
-            </Link>
+      {/* La navbar ne porte plus aucune navigation — les liens de l'app vivent
+          dans les pages (AppNav), seuls restent le logo et le compte. */}
+      <header
+        className={cn(
+          "sticky top-0 z-50 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
+          scrolled
+            ? "border-border/40 bg-background/40 backdrop-blur-xl backdrop-saturate-150"
+            : "border-transparent bg-transparent",
+        )}
+      >
+        <div className="mx-auto flex h-20 w-full max-w-5xl items-center justify-between px-4">
+          <Link
+            to={"/"}
+            className="flex items-center gap-2"
+          >
+            <BudgieLogo className="size-9" />
+            <span className="text-2xl font-semibold tracking-tight">Budgie</span>
+          </Link>
 
-            {isAuthenticated ? (
-              <nav className="flex items-center gap-1">
-                {appNavLinks.map(({ to, label, icon: Icon }) => (
-                  <Button
-                    key={to}
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className={cn(
-                      location.pathname === to &&
-                        "bg-accent text-accent-foreground",
-                    )}
-                  >
-                    <Link to={to}>
-                      <Icon className="size-4" />
-                      <span className="hidden sm:inline">{label}</span>
-                    </Link>
-                  </Button>
-                ))}
-              </nav>
-            ) : isLanding ? (
-              <nav className="hidden items-center gap-1 sm:flex">
-                <Button variant="ghost" size="sm" asChild>
-                  <a href="#features">Features</a>
-                </Button>
-              </nav>
-            ) : null}
-          </div>
-
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative size-9 rounded-full p-0"
+                    className="relative size-11 rounded-full p-0"
                   >
-                    <UserAvatar user={user} />
+                    <UserAvatar user={user} className="size-11" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
@@ -152,10 +123,10 @@ export function Navbar() {
               </DropdownMenu>
             ) : (
               <>
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="lg" className="text-base" asChild>
                   <Link to="/login">Log in</Link>
                 </Button>
-                <Button size="sm" asChild>
+                <Button size="lg" className="text-base" asChild>
                   <Link to="/register">Register</Link>
                 </Button>
               </>

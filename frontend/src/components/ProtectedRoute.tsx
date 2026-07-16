@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom"
+import { AppNav } from "@/components/AppNav"
 import { useAuth } from "@/context/AuthContext"
 
 export function ProtectedRoute() {
@@ -20,7 +21,14 @@ export function ProtectedRoute() {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  return <Outlet />
+  // La navigation de l'app est rendue ici plutôt que dans la navbar : chaque page
+  // protégée l'affiche en tête de contenu, la navbar reste minimale.
+  return (
+    <>
+      <AppNav />
+      <Outlet />
+    </>
+  )
 }
 
 export function GuestRoute() {
