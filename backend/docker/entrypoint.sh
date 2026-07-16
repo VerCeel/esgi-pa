@@ -7,7 +7,11 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
-if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "" ]; then
+if [ -n "$APP_KEY" ]; then
+  # Propager la clé fournie par l'environnement dans le .env, sinon Laravel
+  # peut lire la valeur vide héritée de .env.example.
+  sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" .env
+else
   php artisan key:generate --force
 fi
 

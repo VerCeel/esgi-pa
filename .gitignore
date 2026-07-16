@@ -1,3 +1,4 @@
 .claude
 .gitignore
+.env
 .env.prod
