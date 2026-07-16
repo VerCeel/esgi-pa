@@ -7,11 +7,18 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
-if [ -n "$APP_KEY" ]; then
-  # Propager la clé fournie par l'environnement dans le .env, sinon Laravel
-  # peut lire la valeur vide héritée de .env.example.
-  sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" .env
-else
+# Toute variable fournie au conteneur (docker compose "environment:") prime sur
+# le .env : on réécrit les lignes correspondantes, sinon les valeurs héritées de
+# .env.example (vides ou pointant vers localhost) masquent la vraie config.
+while IFS='=' read -r key _; do
+  case "$key" in ''|\#*) continue ;; esac
+  value="$(printenv "$key" || true)"
+  if [ -n "$value" ]; then
+    sed -i "s|^${key}=.*|${key}=${value}|" .env
+  fi
+done < .env.example
+
+if [ -z "$APP_KEY" ]; then
   php artisan key:generate --force
 fi
 
