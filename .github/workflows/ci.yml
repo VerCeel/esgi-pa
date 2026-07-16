@@ -112,6 +112,9 @@ jobs:
     needs: docker
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Déployer via SSH
         uses: appleboy/ssh-action@v1
@@ -119,7 +122,14 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          envs: GHCR_USER,GHCR_TOKEN
           script: |
-            cd /chemin/vers/budgie
+            set -e
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            cd /root/budgie
             docker compose pull
             docker compose up -d
+            docker image prune -f
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
