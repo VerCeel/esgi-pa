@@ -36,62 +36,70 @@ class SocialAuthController extends Controller
     {
         abort_unless(in_array($provider, self::PROVIDERS, true), 404);
 
+        // Toute la boucle est protégée : l'échange du code PEUT échouer, mais la résolution
+        // du compte (requêtes/écritures) et la création du token le peuvent aussi. Aucune de
+        // ces erreurs ne doit ressortir en 500 brut — on logge la stack complète et on repart
+        // proprement vers le front avec `?error`.
         try {
             $socialUser = Socialite::driver($provider)->stateless()->user();
-        } catch (\Throwable $e) {
-            Log::warning('Social login failed', ['provider' => $provider, 'error' => $e->getMessage()]);
 
-            return $this->redirectToFrontend(['error' => 'social_failed']);
-        }
+            $providerId = $socialUser->getId();
+            $email = $socialUser->getEmail();
 
-        $providerId = $socialUser->getId();
-        $email = $socialUser->getEmail();
+            // Sans identifiant fournisseur, impossible de rattacher le profil à un compte.
+            if (! $providerId) {
+                return $this->redirectToFrontend(['error' => 'social_failed']);
+            }
 
-        // Sans identifiant fournisseur ni email, impossible de rattacher le profil à un compte.
-        if (! $providerId) {
-            return $this->redirectToFrontend(['error' => 'social_failed']);
-        }
+            // 1) Déjà lié à ce fournisseur ? On le reconnaît directement.
+            $user = User::where('provider', $provider)
+                ->where('provider_id', $providerId)
+                ->first();
 
-        // 1) Déjà lié à ce fournisseur ? On le reconnaît directement.
-        $user = User::where('provider', $provider)
-            ->where('provider_id', $providerId)
-            ->first();
+            // 2) Sinon, un compte existe peut-être déjà avec cet email (inscription classique) :
+            //    on le lie au fournisseur. Les emails Google/GitHub sont vérifiés à la source.
+            if (! $user && $email) {
+                $user = User::where('email', $email)->first();
 
-        // 2) Sinon, un compte existe peut-être déjà avec cet email (inscription classique) :
-        //    on le lie au fournisseur. Les emails Google/GitHub sont vérifiés à la source.
-        if (! $user && $email) {
-            $user = User::where('email', $email)->first();
+                if ($user) {
+                    $user->forceFill([
+                        'provider' => $provider,
+                        'provider_id' => $providerId,
+                        'email_verified_at' => $user->email_verified_at ?? now(),
+                    ])->save();
+                }
+            }
 
-            if ($user) {
-                $user->forceFill([
+            // 3) Toujours rien : on crée le compte. Le nom peut manquer côté fournisseur —
+            //    d'où la valeur de repli tirée de l'email.
+            if (! $user) {
+                if (! $email) {
+                    return $this->redirectToFrontend(['error' => 'social_no_email']);
+                }
+
+                $user = User::create([
+                    'name' => $socialUser->getName() ?: Str::before($email, '@'),
+                    'email' => $email,
+                    'password' => null,
                     'provider' => $provider,
                     'provider_id' => $providerId,
-                    'email_verified_at' => $user->email_verified_at ?? now(),
-                ])->save();
-            }
-        }
+                ]);
 
-        // 3) Toujours rien : on crée le compte. Le nom peut manquer côté fournisseur —
-        //    d'où la valeur de repli tirée de l'email.
-        if (! $user) {
-            if (! $email) {
-                return $this->redirectToFrontend(['error' => 'social_no_email']);
+                $user->forceFill(['email_verified_at' => now()])->save();
             }
 
-            $user = User::create([
-                'name' => $socialUser->getName() ?: Str::before($email, '@'),
-                'email' => $email,
-                'password' => null,
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return $this->redirectToFrontend(['token' => $token]);
+        } catch (\Throwable $e) {
+            // La stack complète (pas seulement le message) part dans les logs pour diagnostic.
+            Log::error('Social login failed', [
                 'provider' => $provider,
-                'provider_id' => $providerId,
+                'exception' => $e,
             ]);
 
-            $user->forceFill(['email_verified_at' => now()])->save();
+            return $this->redirectToFrontend(['error' => 'social_failed']);
         }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return $this->redirectToFrontend(['token' => $token]);
     }
 
     /**
