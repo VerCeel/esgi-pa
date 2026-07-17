@@ -45,6 +45,14 @@ services:
       STRIPE_SECRET: ${STRIPE_SECRET}
       STRIPE_PRICE_ID: ${STRIPE_PRICE_ID}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      # Connexion sociale : seuls les client id/secret viennent du .env de l'hôte,
+      # l'URL de callback est dérivée du domaine (same-origin via le proxy /api du front).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: https://${DOMAIN}/api/auth/google/callback
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GITHUB_REDIRECT_URI: https://${DOMAIN}/api/auth/github/callback
     volumes:
       - backend_database:/var/www/html/database
       - backend_storage:/var/www/html/storage/app/public
