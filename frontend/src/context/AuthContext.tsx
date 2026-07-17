@@ -31,6 +31,7 @@ interface AuthContextValue {
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<LoginResult>
   completeTwoFactorLogin: (input: TwoFactorChallengeInput) => Promise<void>
+  loginWithToken: (token: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   updateUser: (user: User) => void
@@ -86,6 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [establishSession],
   )
 
+  // Connexion sociale : le token arrive déjà émis par l'API dans l'URL de callback,
+  // il ne reste qu'à ouvrir la session avec.
+  const loginWithToken = useCallback(
+    async (token: string) => {
+      await establishSession(token)
+    },
+    [establishSession],
+  )
+
   const register = useCallback(
     async (name: string, email: string, password: string) => {
       await apiRegister(name, email, password)
@@ -121,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       login,
       completeTwoFactorLogin,
+      loginWithToken,
       register,
       logout,
       updateUser,
@@ -131,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       completeTwoFactorLogin,
+      loginWithToken,
       register,
       logout,
       updateUser,

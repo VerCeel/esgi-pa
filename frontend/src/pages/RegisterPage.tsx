@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { AlertCircle } from "lucide-react"
+import { SocialLoginButtons } from "@/components/SocialLoginButtons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -138,6 +139,10 @@ export function RegisterPage() {
               {isSubmitting ? "Creating account..." : "Create account"}
             </Button>
           </form>
+
+          <div className="mt-6">
+            <SocialLoginButtons />
+          </div>
 
           <p className="text-muted-foreground mt-6 text-center text-sm">
             Already have an account?{" "}

@@ -14,6 +14,7 @@ import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage"
 import { IncomesPage } from "@/pages/IncomesPage"
 import { LandingPage } from "@/pages/LandingPage"
 import { LoginPage } from "@/pages/LoginPage"
+import { OAuthCallbackPage } from "@/pages/OAuthCallbackPage"
 import { RegisterPage } from "@/pages/RegisterPage"
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage"
 import { SharedAccountsPage } from "@/pages/SharedAccountsPage"
@@ -24,6 +25,10 @@ function AppLayout() {
       <Navbar />
       <Routes>
         <Route path="/" element={<LandingPage />} />
+
+        {/* Retour de la boucle OAuth : ni invité ni protégé — la page ouvre elle-même
+            la session à partir du token reçu, puis redirige. */}
+        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
 
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<LoginPage />} />

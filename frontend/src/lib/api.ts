@@ -106,6 +106,17 @@ export async function getUser(): Promise<User> {
   return data
 }
 
+export type OAuthProvider = "google" | "github"
+
+/**
+ * URL de démarrage d'une connexion sociale. On ne passe pas par axios : c'est le
+ * navigateur qui doit être redirigé vers le fournisseur (redirection pleine page),
+ * qui renverra ensuite vers /auth/callback avec un token.
+ */
+export function oauthRedirectUrl(provider: OAuthProvider): string {
+  return `${api.defaults.baseURL}/auth/${provider}/redirect`
+}
+
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data

@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccountShareController;
 use App\Http\Controllers\ForecastController;
@@ -27,6 +28,12 @@ Route::post('/2fa/challenge', [TwoFactorController::class, 'challenge'])->middle
 // throttlées pour éviter l'énumération d'emails et le brute-force du token de reset.
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
+
+// Connexion sociale (Google / Apple) : deux étapes publiques.
+// `redirect` envoie vers le fournisseur, `callback` reçoit son retour et repart
+// vers le SPA avec un token Sanctum. Le throttle limite l'abus de la boucle OAuth.
+Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])->middleware('throttle:10,1');
+Route::match(['get', 'post'], '/auth/{provider}/callback', [SocialAuthController::class, 'callback'])->middleware('throttle:10,1');
 
 // Stripe appelle cette route depuis ses serveurs : pas de token possible.
 // C'est la signature du webhook qui l'authentifie, pas Sanctum.

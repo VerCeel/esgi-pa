@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { AlertCircle, ArrowLeft, ShieldCheck } from "lucide-react"
 import { OtpField } from "@/components/otp-field"
+import { SocialLoginButtons } from "@/components/SocialLoginButtons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -235,6 +236,10 @@ export function LoginPage() {
                   {isSubmitting ? "Signing in..." : "Sign in"}
                 </Button>
               </form>
+
+              <div className="mt-6">
+                <SocialLoginButtons />
+              </div>
 
               <p className="text-muted-foreground mt-6 text-center text-sm">
                 Don&apos;t have an account?{" "}
