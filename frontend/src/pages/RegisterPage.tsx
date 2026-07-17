@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { AlertCircle } from "lucide-react"
+import { Link, useLocation } from "react-router-dom"
+import { AlertCircle, MailCheck } from "lucide-react"
+import { toast } from "sonner"
 import { SocialLoginButtons } from "@/components/SocialLoginButtons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -14,21 +15,15 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/AuthContext"
-import { getErrorMessage, getFieldErrors } from "@/lib/api"
-
-interface RedirectState {
-  from?: { pathname: string }
-}
+import {
+  getErrorMessage,
+  getFieldErrors,
+  resendVerificationEmail,
+} from "@/lib/api"
 
 export function RegisterPage() {
   const { register } = useAuth()
-  const navigate = useNavigate()
   const location = useLocation()
-
-  // Un invité de partage n'a souvent pas encore de compte : après inscription, il doit
-  // repartir vers le lien d'invitation, pas vers le dashboard.
-  const redirectTo =
-    (location.state as RedirectState | null)?.from?.pathname ?? "/dashboard"
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -37,6 +32,11 @@ export function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Une fois le compte créé, on n'ouvre pas de session : on affiche l'écran
+  // « vérifie ta boîte mail » avec le message renvoyé par l'API.
+  const [confirmation, setConfirmation] = useState<string | null>(null)
+  const [isResending, setIsResending] = useState(false)
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError("")
@@ -44,8 +44,8 @@ export function RegisterPage() {
     setIsSubmitting(true)
 
     try {
-      await register(name, email, password)
-      navigate(redirectTo)
+      const message = await register(name, email, password)
+      setConfirmation(message)
     } catch (err) {
       const errors = getFieldErrors(err)
       if (Object.keys(errors).length > 0) {
@@ -60,6 +60,54 @@ export function RegisterPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  async function handleResend() {
+    setIsResending(true)
+    try {
+      const message = await resendVerificationEmail(email)
+      toast.success(message)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setIsResending(false)
+    }
+  }
+
+  if (confirmation) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <div className="bg-primary/10 text-primary mb-2 flex size-10 items-center justify-center rounded-full">
+              <MailCheck className="size-5" />
+            </div>
+            <CardTitle>Check your email</CardTitle>
+            <CardDescription>{confirmation}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              We sent a verification link to{" "}
+              <span className="text-foreground font-medium">{email}</span>. Click
+              it to activate your account, then sign in.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleResend}
+              disabled={isResending}
+            >
+              {isResending ? "Sending..." : "Resend verification email"}
+            </Button>
+            <Button asChild className="w-full">
+              <Link to="/login" state={location.state}>
+                Back to sign in
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

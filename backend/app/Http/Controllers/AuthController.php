@@ -34,7 +34,14 @@ class AuthController extends Controller
             'password' => Hash::make($request['password']),
         ]);
 
-        return response()->json($user, 201);
+        // On ne délivre pas de session tout de suite : l'utilisateur doit d'abord
+        // confirmer son adresse via le lien signé qu'on lui envoie ici.
+        $user->sendEmailVerificationNotification();
+
+        return response()->json([
+            'message' => 'Account created. Check your inbox to verify your email before signing in.',
+            'user' => $user,
+        ], 201);
     }
 
     public function login(Request $request)
@@ -45,6 +52,16 @@ class AuthController extends Controller
         // mais on reste sur un message d'erreur unique pour ne pas révéler si l'email existe.
         if (!$user || !Hash::check((string) $request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        // Mot de passe bon : on peut maintenant révéler au propriétaire du compte que
+        // son email n'est pas vérifié (le front proposera de renvoyer le lien). On ne
+        // délivre aucune session tant que l'adresse n'est pas confirmée.
+        if (!$user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Please verify your email address before signing in.',
+                'email_unverified' => true,
+            ], 403);
         }
 
         // Mot de passe bon, mais ce n'est que le premier facteur : on ne délivre pas encore

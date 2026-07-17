@@ -13,7 +13,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // L'app tourne derrière Caddy puis le nginx du front : sans faire confiance à
+        // ces proxies, Laravel voit le trafic en http et croit le port 8000, ce qui
+        // casse la génération/validation des URLs signées (vérification d'email) et
+        // fait porter le throttle sur l'IP du proxy plutôt que celle du client.
+        // Le backend n'est joignable que via ce chemin, jamais exposé directement.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

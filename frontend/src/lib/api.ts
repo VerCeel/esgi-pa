@@ -66,13 +66,40 @@ export async function twoFactorChallenge(
   return data
 }
 
+/**
+ * L'inscription ne connecte plus : elle crée le compte et déclenche l'envoi du lien de
+ * vérification. Tant que l'email n'est pas confirmé, le login est refusé (403).
+ */
 export async function register(
   name: string,
   email: string,
   password: string,
-): Promise<User> {
-  const { data } = await api.post<User>("/register", { name, email, password })
+): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>("/register", {
+    name,
+    email,
+    password,
+  })
   return data
+}
+
+/** Renvoie un nouveau lien de vérification à l'adresse donnée. */
+export async function resendVerificationEmail(email: string): Promise<string> {
+  const { data } = await api.post<{ message: string }>(
+    "/email/verification-notification",
+    { email },
+  )
+  return data.message
+}
+
+/** Vrai si l'erreur de login correspond à un email pas encore vérifié (403). */
+export function isEmailUnverifiedError(error: unknown): boolean {
+  return (
+    axios.isAxiosError(error) &&
+    error.response?.status === 403 &&
+    (error.response.data as { email_unverified?: boolean } | undefined)
+      ?.email_unverified === true
+  )
 }
 
 export async function logout(): Promise<void> {

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { AlertCircle, ArrowLeft, ShieldCheck } from "lucide-react"
+import { toast } from "sonner"
 import { OtpField } from "@/components/otp-field"
 import { SocialLoginButtons } from "@/components/SocialLoginButtons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -15,7 +16,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/AuthContext"
-import { getErrorMessage } from "@/lib/api"
+import {
+  getErrorMessage,
+  isEmailUnverifiedError,
+  resendVerificationEmail,
+} from "@/lib/api"
 
 interface RedirectState {
   from?: { pathname: string }
@@ -35,6 +40,11 @@ export function LoginPage() {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Un login refusé faute d'email vérifié n'est pas une vraie erreur d'identifiants :
+  // on propose de renvoyer le lien plutôt que d'afficher un message d'échec sec.
+  const [needsVerification, setNeedsVerification] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+
   // Une fois le mot de passe validé, on garde le login_token le temps du second facteur.
   const [loginToken, setLoginToken] = useState<string | null>(null)
   const [code, setCode] = useState("")
@@ -43,6 +53,7 @@ export function LoginPage() {
   async function handleCredentialsSubmit(e: FormEvent) {
     e.preventDefault()
     setError("")
+    setNeedsVerification(false)
     setIsSubmitting(true)
 
     try {
@@ -55,9 +66,25 @@ export function LoginPage() {
 
       navigate(redirectTo)
     } catch (err) {
-      setError(getErrorMessage(err))
+      if (isEmailUnverifiedError(err)) {
+        setNeedsVerification(true)
+      } else {
+        setError(getErrorMessage(err))
+      }
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  async function handleResend() {
+    setIsResending(true)
+    try {
+      const message = await resendVerificationEmail(email)
+      toast.success(message)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setIsResending(false)
     }
   }
 
@@ -196,6 +223,29 @@ export function LoginPage() {
                   <Alert variant="destructive">
                     <AlertCircle />
                     <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {needsVerification && (
+                  <Alert>
+                    <AlertCircle />
+                    <AlertDescription className="space-y-2">
+                      <span>
+                        Please verify your email address before signing in.
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={handleResend}
+                        disabled={isResending}
+                      >
+                        {isResending
+                          ? "Sending..."
+                          : "Resend verification email"}
+                      </Button>
+                    </AlertDescription>
                   </Alert>
                 )}
 

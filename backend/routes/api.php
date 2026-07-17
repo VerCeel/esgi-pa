@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccountShareController;
@@ -28,6 +29,15 @@ Route::post('/2fa/challenge', [TwoFactorController::class, 'challenge'])->middle
 // throttlées pour éviter l'énumération d'emails et le brute-force du token de reset.
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
+
+// Vérification d'email : le nom `verification.verify` est celui qu'attend la notification
+// Laravel pour construire le lien signé. La signature est validée dans le contrôleur (pas
+// via le middleware `signed`) afin de rediriger proprement le navigateur vers le SPA.
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware('throttle:10,1')
+    ->name('verification.verify');
+Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+    ->middleware('throttle:5,1');
 
 // Connexion sociale (Google / Apple) : deux étapes publiques.
 // `redirect` envoie vers le fournisseur, `callback` reçoit son retour et repart

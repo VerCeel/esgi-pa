@@ -32,7 +32,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<LoginResult>
   completeTwoFactorLogin: (input: TwoFactorChallengeInput) => Promise<void>
   loginWithToken: (token: string) => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string) => Promise<string>
   logout: () => Promise<void>
   updateUser: (user: User) => void
   refreshUser: () => Promise<void>
@@ -97,13 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const register = useCallback(
-    async (name: string, email: string, password: string) => {
-      await apiRegister(name, email, password)
-      // Un compte tout juste créé n'a jamais le 2FA : le token est toujours là.
-      const { token } = await apiLogin(email, password)
-      await establishSession(token!)
+    async (name: string, email: string, password: string): Promise<string> => {
+      // Pas de session ici : l'API n'en délivre pas tant que l'email n'est pas vérifié.
+      // On renvoie le message de confirmation à afficher (« regarde ta boîte mail »).
+      const { message } = await apiRegister(name, email, password)
+      return message
     },
-    [establishSession],
+    [],
   )
 
   const logout = useCallback(async () => {
