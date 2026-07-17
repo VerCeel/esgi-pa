@@ -9,6 +9,7 @@ import { AcceptSharePage } from "@/pages/AcceptSharePage"
 import { AccountsPage } from "@/pages/AccountsPage"
 import { BillingPage } from "@/pages/BillingPage"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { EmailVerifiedPage } from "@/pages/EmailVerifiedPage"
 import { ExpensesPage } from "@/pages/ExpensesPage"
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage"
 import { IncomesPage } from "@/pages/IncomesPage"
@@ -29,6 +30,10 @@ function AppLayout() {
         {/* Retour de la boucle OAuth : ni invité ni protégé — la page ouvre elle-même
             la session à partir du token reçu, puis redirige. */}
         <Route path="/auth/callback" element={<OAuthCallbackPage />} />
+
+        {/* Atterrissage du lien de vérification d'email : public, l'API a déjà traité
+            le clic et transmet le résultat via ?status. */}
+        <Route path="/email-verified" element={<EmailVerifiedPage />} />
 
         <Route element={<GuestRoute />}>
           <Route path="/login" element={<LoginPage />} />

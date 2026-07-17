@@ -13,11 +13,17 @@ class TwoFactorTest extends TestCase
 
     private function makeUser(): User
     {
-        return User::create([
+        // La connexion exige désormais un email vérifié : ces tests portent sur le 2FA,
+        // pas sur la vérification, donc on considère l'adresse confirmée d'emblée.
+        $user = User::create([
             'name' => 'Test',
             'email' => 'test@example.com',
             'password' => 'password123',
         ]);
+
+        $user->markEmailAsVerified();
+
+        return $user;
     }
 
     /** Le flow complet : enable -> confirm -> login -> challenge. */
