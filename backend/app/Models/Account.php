@@ -24,6 +24,31 @@ class Account extends Model
         ];
     }
 
+    /**
+     * Toutes les FK ne suppriment pas en cascade (les dépenses n'ont pas de
+     * ON DELETE CASCADE) et les exceptions sont polymorphes, donc sans contrainte :
+     * un compte qui porte des dépenses ne pouvait pas être supprimé. On nettoie donc
+     * explicitement toute sa descendance juste avant de supprimer le compte lui-même.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Account $account): void {
+            $account->loadMissing(['expenses:id,account_id', 'incomes:id,account_id']);
+
+            TransactionException::where('exceptionable_type', Expense::class)
+                ->whereIn('exceptionable_id', $account->expenses->pluck('id'))
+                ->delete();
+
+            TransactionException::where('exceptionable_type', Income::class)
+                ->whereIn('exceptionable_id', $account->incomes->pluck('id'))
+                ->delete();
+
+            $account->expenses()->delete();
+            $account->incomes()->delete();
+            $account->shares()->delete();
+        });
+    }
+
     /** Le propriétaire du compte, le seul à pouvoir le modifier. */
     public function user(): BelongsTo
     {

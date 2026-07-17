@@ -79,6 +79,28 @@ export async function logout(): Promise<void> {
   await api.post("/logout")
 }
 
+/** Étape 1 du reset : demande l'envoi d'un lien de réinitialisation par email. */
+export async function forgotPassword(email: string): Promise<string> {
+  const { data } = await api.post<{ message: string }>("/forgot-password", {
+    email,
+  })
+  return data.message
+}
+
+/** Étape 2 : le token reçu par email + le nouveau mot de passe. */
+export async function resetPassword(input: {
+  token: string
+  email: string
+  password: string
+  password_confirmation: string
+}): Promise<string> {
+  const { data } = await api.post<{ message: string }>(
+    "/reset-password",
+    input,
+  )
+  return data.message
+}
+
 export async function getUser(): Promise<User> {
   const { data } = await api.get<User>("/user")
   return data

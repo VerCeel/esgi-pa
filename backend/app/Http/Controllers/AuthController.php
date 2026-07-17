@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -76,5 +78,60 @@ class AuthController extends Controller
     {
         $request->user()->tokens()->delete();
         return response()->noContent();
+    }
+
+    /**
+     * Étape 1 du reset : on envoie le lien par email si l'adresse existe.
+     * La réponse est volontairement identique dans tous les cas — on ne révèle jamais
+     * si un email est enregistré ou non.
+     */
+    public function forgotPassword(Request $request)
+    {
+        $validated = Validator::make($request->all(), [
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        if ($validated->fails()) {
+            return response()->json($validated->errors(), 422);
+        }
+
+        Password::sendResetLink($request->only('email'));
+
+        return response()->json([
+            'message' => 'If that email is registered, a password reset link is on its way.',
+        ], 200);
+    }
+
+    /**
+     * Étape 2 : le token reçu par email + le nouveau mot de passe.
+     * Un reset réussi révoque tous les tokens Sanctum existants : les sessions ouvertes
+     * ailleurs (potentiellement celles d'un intrus) sont coupées net.
+     */
+    public function resetPassword(Request $request)
+    {
+        $validated = Validator::make($request->all(), [
+            'token' => ['required', 'string'],
+            'email' => ['required', 'string', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if ($validated->fails()) {
+            return response()->json($validated->errors(), 422);
+        }
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill(['password' => Hash::make($password)])->save();
+                $user->tokens()->delete();
+                event(new PasswordReset($user));
+            },
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json(['message' => __($status)], 422);
+        }
+
+        return response()->json(['message' => 'Your password has been reset. You can now sign in.'], 200);
     }
 }

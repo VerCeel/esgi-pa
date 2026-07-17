@@ -64,3 +64,8 @@ export async function updateAccount(
 export async function deleteAccount(id: number): Promise<void> {
   await api.delete(`/accounts/${id}`)
 }
+
+/** Quitter un compte qu'on m'a partagé : je retire mon propre accès. */
+export async function leaveSharedAccount(id: number): Promise<void> {
+  await api.delete(`/accounts/shared/${id}`)
+}

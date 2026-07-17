@@ -23,6 +23,11 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,
 // protégé par le login_token temporaire + un throttle contre le brute-force du code à 6 chiffres.
 Route::post('/2fa/challenge', [TwoFactorController::class, 'challenge'])->middleware('throttle:5,1');
 
+// Mot de passe oublié : deux étapes publiques (l'utilisateur n'est pas connecté),
+// throttlées pour éviter l'énumération d'emails et le brute-force du token de reset.
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
+
 // Stripe appelle cette route depuis ses serveurs : pas de token possible.
 // C'est la signature du webhook qui l'authentifie, pas Sanctum.
 Route::post('/stripe/webhook', [SubscriptionController::class, 'webhook']);
@@ -45,6 +50,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     // Doit précéder /accounts/{account}, sinon "shared" serait pris pour un identifiant.
     Route::get('/accounts/shared', [AccountController::class, 'shared']);
+    // L'invité quitte un compte partagé (retire son propre accès).
+    Route::delete('/accounts/shared/{account}', [AccountController::class, 'leaveShared']);
     Route::apiResource('/accounts', AccountController::class);
 
     // État des comptes à un mois donné (?month=2035-12).

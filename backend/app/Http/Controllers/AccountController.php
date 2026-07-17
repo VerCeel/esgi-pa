@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesAccounts;
 use App\Http\Requests\StoreAccountRequest;
 use App\Http\Requests\UpdateAccountRequest;
 use App\Models\Account;
+use App\Models\AccountShare;
 use App\Services\ForecastService;
 use App\Services\PlanLimits;
 use Carbon\CarbonImmutable;
@@ -124,6 +125,24 @@ class AccountController extends Controller
         $account->delete();
 
         return response()->json(['message' => 'Account deleted successfully'], 200);
+    }
+
+    /**
+     * L'invité quitte un compte qu'on lui a partagé : on retire son propre partage.
+     * Il perd l'accès, mais le compte et ses données restent intacts pour le propriétaire.
+     */
+    public function leaveShared(int $id)
+    {
+        $deleted = AccountShare::where('account_id', $id)
+            ->where('user_id', Auth::id())
+            ->whereNotNull('accepted_at')
+            ->delete();
+
+        if (! $deleted) {
+            return response()->json(['message' => 'Shared account not found'], 404);
+        }
+
+        return response()->json(['message' => 'You left the shared account'], 200);
     }
 
     /**

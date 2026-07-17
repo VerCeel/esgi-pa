@@ -235,6 +235,75 @@ class AccountAccessTest extends TestCase
         $this->assertSame('Compte partagé', $account->fresh()->name);
     }
 
+    /**
+     * Régression : la FK des dépenses n'avait pas de ON DELETE CASCADE, donc supprimer
+     * un compte qui portait des dépenses (souvent, un compte qu'on venait de partager)
+     * échouait. La descendance doit maintenant partir avec le compte.
+     */
+    public function test_deleting_an_account_removes_its_expenses_incomes_and_shares(): void
+    {
+        Notification::fake();
+
+        $owner = $this->makeUser('owner@example.com');
+        $guest = $this->makeUser('guest@example.com');
+        $account = $this->makeAccount($owner);
+
+        $expense = Expense::create($this->expensePayload($account));
+
+        $this->actingAs($owner)
+            ->postJson("/api/accounts/{$account->id}/shares", ['email' => 'guest@example.com'])
+            ->assertStatus(201);
+        $token = $account->shares()->first()->token;
+        $this->actingAs($guest)->postJson("/api/shares/{$token}/accept")->assertOk();
+
+        $this->actingAs($owner)
+            ->deleteJson("/api/accounts/{$account->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('accounts', ['id' => $account->id]);
+        $this->assertDatabaseMissing('expenses', ['id' => $expense->id]);
+        $this->assertSame(0, \App\Models\AccountShare::count());
+    }
+
+    /** L'invité peut quitter un compte partagé : son accès tombe, le compte survit. */
+    public function test_a_guest_can_leave_a_shared_account(): void
+    {
+        Notification::fake();
+
+        $owner = $this->makeUser('owner@example.com');
+        $guest = $this->makeUser('guest@example.com');
+        $account = $this->makeAccount($owner, 'Compte partagé');
+
+        $this->actingAs($owner)
+            ->postJson("/api/accounts/{$account->id}/shares", ['email' => 'guest@example.com'])
+            ->assertStatus(201);
+        $token = $account->shares()->first()->token;
+        $this->actingAs($guest)->postJson("/api/shares/{$token}/accept")->assertOk();
+        $this->actingAs($guest)->getJson('/api/accounts/shared')->assertJsonCount(1);
+
+        $this->actingAs($guest)
+            ->deleteJson("/api/accounts/shared/{$account->id}")
+            ->assertOk();
+
+        // L'invité n'a plus accès…
+        $this->actingAs($guest)->getJson('/api/accounts/shared')->assertJsonCount(0);
+        // …mais le compte et son propriétaire sont intacts.
+        $this->assertDatabaseHas('accounts', ['id' => $account->id]);
+        $this->actingAs($owner)->getJson('/api/accounts')->assertOk()->assertJsonCount(1);
+    }
+
+    /** On ne peut pas « quitter » un compte qui ne nous a pas été partagé. */
+    public function test_leaving_an_account_not_shared_with_you_is_a_404(): void
+    {
+        $owner = $this->makeUser('owner@example.com');
+        $stranger = $this->makeUser('stranger@example.com');
+        $account = $this->makeAccount($owner);
+
+        $this->actingAs($stranger)
+            ->deleteJson("/api/accounts/shared/{$account->id}")
+            ->assertStatus(404);
+    }
+
     /** Un lien d'invitation qui fuite ne sert à rien : il est lié à une adresse email. */
     public function test_an_invitation_cannot_be_accepted_from_another_account(): void
     {

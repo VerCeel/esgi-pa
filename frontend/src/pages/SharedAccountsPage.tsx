@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from "react"
-import { Eye } from "lucide-react"
+import { Eye, LogOut } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/page-header"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -9,13 +20,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { getSharedAccounts, type SharedAccount } from "@/lib/accounts"
+import {
+  getSharedAccounts,
+  leaveSharedAccount,
+  type SharedAccount,
+} from "@/lib/accounts"
 import { getErrorMessage } from "@/lib/api"
 import { formatAmount, formatRate } from "@/lib/format"
 
 export function SharedAccountsPage() {
   const [accounts, setAccounts] = useState<SharedAccount[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [leaving, setLeaving] = useState<SharedAccount | null>(null)
+  const [isLeaving, setIsLeaving] = useState(false)
 
   const fetchAccounts = useCallback(async () => {
     setIsLoading(true)
@@ -31,6 +48,22 @@ export function SharedAccountsPage() {
   useEffect(() => {
     fetchAccounts()
   }, [fetchAccounts])
+
+  async function handleLeave() {
+    if (!leaving) return
+
+    setIsLeaving(true)
+    try {
+      await leaveSharedAccount(leaving.id)
+      toast.success(`You left ${leaving.name}`)
+      setLeaving(null)
+      await fetchAccounts()
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setIsLeaving(false)
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
@@ -95,11 +128,54 @@ export function SharedAccountsPage() {
                   <span className="text-muted-foreground">Owner</span>
                   <span className="truncate">{account.owner?.name ?? "—"}</span>
                 </div>
+                <div className="flex justify-end pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => setLeaving(account)}
+                  >
+                    <LogOut className="size-4" />
+                    Leave
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <AlertDialog
+        open={leaving !== null}
+        onOpenChange={(open) => !open && setLeaving(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave shared account</AlertDialogTitle>
+            <AlertDialogDescription>
+              You&apos;ll lose access to{" "}
+              <span className="text-foreground font-medium">
+                {leaving?.name}
+              </span>
+              . The owner can share it with you again later. This doesn&apos;t
+              delete any data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLeaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleLeave()
+              }}
+              disabled={isLeaving}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              {isLeaving ? "Leaving..." : "Leave"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
