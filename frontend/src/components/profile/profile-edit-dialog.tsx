@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { AlertCircle, Camera } from "lucide-react"
+import { AlertCircle, Camera, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { UserAvatar } from "@/components/UserAvatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -42,6 +42,7 @@ export function ProfileEditDialog({
   const [newPasswordConfirmation, setNewPasswordConfirmation] = useState("")
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [removeAvatar, setRemoveAvatar] = useState(false)
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -54,6 +55,7 @@ export function ProfileEditDialog({
       setNewPasswordConfirmation("")
       setAvatarFile(null)
       setAvatarPreview(null)
+      setRemoveAvatar(false)
       setError("")
       setFieldErrors({})
     }
@@ -71,8 +73,24 @@ export function ProfileEditDialog({
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) setAvatarFile(file)
+    if (file) {
+      setAvatarFile(file)
+      // Choisir une nouvelle photo annule une éventuelle demande de suppression.
+      setRemoveAvatar(false)
+    }
   }
+
+  function handleRemoveAvatar() {
+    setAvatarFile(null)
+    setRemoveAvatar(true)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  // Ce que montre l'aperçu : la nouvelle photo si on en a choisi une, sinon rien
+  // quand on vient de demander la suppression, sinon la photo actuelle.
+  const displayUser =
+    removeAvatar && user ? { ...user, avatar_url: null } : user
+  const canRemoveAvatar = Boolean(user?.avatar_url || avatarFile) && !removeAvatar
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -91,6 +109,7 @@ export function ProfileEditDialog({
             }
           : {}),
         ...(avatarFile ? { avatar: avatarFile } : {}),
+        ...(removeAvatar ? { remove_avatar: true } : {}),
       })
       updateUser(updated)
       toast.success("Profile updated successfully")
@@ -134,7 +153,7 @@ export function ProfileEditDialog({
           <div className="flex flex-col items-center gap-3">
             <div className="relative">
               <UserAvatar
-                user={user}
+                user={displayUser}
                 previewUrl={avatarPreview}
                 className="size-20"
                 fallbackClassName="text-lg"
@@ -159,6 +178,23 @@ export function ProfileEditDialog({
             <p className="text-muted-foreground text-xs">
               JPG, PNG or GIF. Max 2 MB.
             </p>
+            {canRemoveAvatar && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={handleRemoveAvatar}
+              >
+                <Trash2 className="size-4" />
+                Remove photo
+              </Button>
+            )}
+            {removeAvatar && (
+              <p className="text-muted-foreground text-xs">
+                Photo will be removed when you save.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

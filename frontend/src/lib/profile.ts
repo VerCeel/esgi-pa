@@ -7,6 +7,8 @@ export interface ProfileInput {
   new_password?: string
   new_password_confirmation?: string
   avatar?: File | null
+  /** Supprime la photo de profil actuelle (ignoré si un nouveau fichier est fourni). */
+  remove_avatar?: boolean
 }
 
 export async function getProfile(): Promise<User> {
@@ -24,6 +26,7 @@ export async function updateProfile(input: ProfileInput): Promise<User> {
     formData.append("new_password_confirmation", input.new_password_confirmation)
   }
   if (input.avatar) formData.append("avatar", input.avatar)
+  if (input.remove_avatar) formData.append("remove_avatar", "1")
 
   const { data } = await api.patch<User>("/profile", formData, {
     headers: { "Content-Type": "multipart/form-data" },

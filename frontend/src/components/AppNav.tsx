@@ -23,7 +23,7 @@ export function AppNav() {
   const location = useLocation()
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pt-6">
+    <div className="mx-auto flex w-full max-w-5xl justify-center px-4 pt-6">
       <nav className="flex w-fit items-center gap-1 rounded-full border bg-card p-1 shadow-sm">
         {appNavLinks.map(({ to, label, icon: Icon }) => (
           <Button

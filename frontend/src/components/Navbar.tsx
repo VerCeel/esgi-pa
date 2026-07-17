@@ -83,12 +83,19 @@ export function Navbar() {
                     <UserAvatar user={user} className="size-11" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuContent align="end" className="w-60">
                   <DropdownMenuLabel className="font-normal">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {user?.email}
-                    </p>
+                    <div className="flex items-center gap-3 py-1">
+                      <UserAvatar user={user} className="size-10" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {user?.name}
+                        </p>
+                        <p className="text-muted-foreground truncate text-xs">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -113,7 +120,10 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={handleLogout}
+                  >
                     <LogOut className="size-4" />
                     Log out
                   </DropdownMenuItem>

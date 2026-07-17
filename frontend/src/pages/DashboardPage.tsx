@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { PageHeader } from "@/components/page-header"
 import { StatTile } from "@/components/stat-tile"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -30,11 +30,11 @@ import { getErrorMessage } from "@/lib/api"
 import { getForecast, type Forecast } from "@/lib/forecast"
 import { formatAmount, formatDate, formatRate } from "@/lib/format"
 
-/** Le même mois, un an plus tard — au format "YYYY-MM" attendu par l'API et par <input type="month">. */
+/** Le même jour, un an plus tard — au format "YYYY-MM-DD" attendu par le DatePicker. */
 function inOneYear(): string {
   const date = new Date()
   date.setFullYear(date.getFullYear() + 1)
-  return date.toISOString().slice(0, 7)
+  return date.toISOString().slice(0, 10)
 }
 
 export function DashboardPage() {
@@ -43,47 +43,44 @@ export function DashboardPage() {
   const [forecast, setForecast] = useState<Forecast | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Le mois projeté, piloté par le sélecteur. La prévision ne se recalcule qu'au clic
-  // sur « Compute », pas à chaque coup de flèche sur le champ mois.
-  const [month, setMonth] = useState(inOneYear)
+  // La date projetée, pilotée par le sélecteur. Seul le mois compte pour l'API,
+  // qu'on en dérive : la prévision porte sur la fin du mois choisi.
+  const [date, setDate] = useState(inOneYear)
   const [isForecasting, setIsForecasting] = useState(false)
+  const month = date.slice(0, 7)
 
-  const fetchData = useCallback(async () => {
+  const fetchAccounts = useCallback(async () => {
     setIsLoading(true)
     try {
-      // Deux appels indépendants : on les lance en parallèle.
-      const [accountsData, forecastData] = await Promise.all([
-        getAccounts(),
-        getForecast(month),
-      ])
-      setAccounts(accountsData)
-      setForecast(forecastData)
+      setAccounts(await getAccounts())
     } catch (err) {
       toast.error(getErrorMessage(err))
     } finally {
       setIsLoading(false)
     }
-    // Volontairement au montage seulement : le mois initial ne change pas ici, et
-    // recalculer est le rôle du bouton Compute.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    fetchAccounts()
+  }, [fetchAccounts])
 
-  async function computeForecast() {
+  // La prévision se recalcule automatiquement dès qu'on choisit une date — plus de
+  // bouton « Compute ». Le drapeau `cancelled` évite qu'une réponse en retard écrase
+  // une sélection plus récente.
+  useEffect(() => {
     if (!month) return
 
+    let cancelled = false
     setIsForecasting(true)
-    try {
-      setForecast(await getForecast(month))
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    } finally {
-      setIsForecasting(false)
+    getForecast(month)
+      .then((data) => !cancelled && setForecast(data))
+      .catch((err) => !cancelled && toast.error(getErrorMessage(err)))
+      .finally(() => !cancelled && setIsForecasting(false))
+
+    return () => {
+      cancelled = true
     }
-  }
+  }, [month])
 
   const totalBalance = accounts.reduce(
     (sum, account) => sum + Number(account.balance),
@@ -153,21 +150,24 @@ export function DashboardPage() {
                   exceptions and net interest included.
                 </p>
               </div>
-              <div className="flex items-end gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="forecast-month">Up to the end of</Label>
-                  <Input
-                    id="forecast-month"
-                    type="month"
-                    value={month}
-                    onChange={(e) => setMonth(e.target.value)}
-                    className="w-[11rem]"
-                  />
+              <div className="space-y-2">
+                <Label htmlFor="forecast-date">Up to the end of</Label>
+                <div className="flex items-center gap-2">
+                  <div className="w-[13rem]">
+                    <DatePicker
+                      id="forecast-date"
+                      value={date}
+                      onChange={setDate}
+                      disabled={isForecasting}
+                    />
+                  </div>
+                  {isForecasting && (
+                    <span className="text-muted-foreground flex items-center gap-1 text-sm">
+                      <TrendingUp className="size-4 animate-pulse" />
+                      Computing…
+                    </span>
+                  )}
                 </div>
-                <Button onClick={computeForecast} disabled={isForecasting || !month}>
-                  <TrendingUp className="size-4" />
-                  {isForecasting ? "Computing..." : "Compute"}
-                </Button>
               </div>
             </div>
 

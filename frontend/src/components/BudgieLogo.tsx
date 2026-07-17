@@ -5,7 +5,7 @@ interface BudgieLogoProps {
 }
 
 /**
- * La perruche verte — le même oiseau que le favicon (public/favicon.svg),
+ * La perruche cyan — le même oiseau que le favicon (public/favicon.svg),
  * pour que l'identité soit cohérente entre l'onglet du navigateur et la navbar.
  */
 export function BudgieLogo({ className }: BudgieLogoProps) {
@@ -13,7 +13,7 @@ export function BudgieLogo({ className }: BudgieLogoProps) {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#22c55e"
+      stroke="#22d3ee"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"

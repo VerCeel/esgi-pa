@@ -25,6 +25,7 @@ class ProfileController extends Controller
             'new_password' => ['required_with:password', 'string', 'min:8'],
             'new_password_confirmation' => ['required_with:new_password', 'same:new_password'],
             'avatar' => ['nullable', 'image', 'max:2048'],
+            'remove_avatar' => ['nullable', 'boolean'],
         ]);
 
         if ($validated->fails()) {
@@ -49,6 +50,10 @@ class ProfileController extends Controller
                 Storage::disk('public')->delete($currentUser->avatar);
             }
             $currentUser->avatar = $request->file('avatar')->store('avatars', 'public');
+        } elseif ($request->boolean('remove_avatar') && $currentUser->avatar) {
+            // Suppression de la photo : on efface le fichier et on revient aux initiales.
+            Storage::disk('public')->delete($currentUser->avatar);
+            $currentUser->avatar = null;
         }
 
         $currentUser->save();
