@@ -22,8 +22,11 @@ if [ -z "$APP_KEY" ]; then
   php artisan key:generate --force
 fi
 
-mkdir -p database storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-touch database/database.sqlite
+# Le fichier SQLite vit dans un sous-dossier dédié (monté en volume). Ne JAMAIS monter
+# le volume sur database/ entier : il masquerait migrations/ et figerait le schéma.
+DB_FILE="${DB_DATABASE:-database/database.sqlite}"
+mkdir -p "$(dirname "$DB_FILE")" storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+touch "$DB_FILE"
 chmod -R 775 storage bootstrap/cache
 
 php artisan migrate --force

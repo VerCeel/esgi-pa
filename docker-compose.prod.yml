@@ -30,7 +30,9 @@ services:
       LOG_CHANNEL: stderr
       LOG_LEVEL: warning
       DB_CONNECTION: sqlite
-      DB_DATABASE: /var/www/html/database/database.sqlite
+      # La base vit dans database/data (volume dédié). Ne pas monter database/ entier :
+      # le volume masquerait migrations/ et les nouvelles migrations ne tourneraient jamais.
+      DB_DATABASE: /var/www/html/database/data/database.sqlite
       SESSION_DRIVER: file
       CACHE_STORE: file
       QUEUE_CONNECTION: sync
@@ -52,7 +54,7 @@ services:
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       GITHUB_REDIRECT_URI: https://${DOMAIN}/api/auth/github/callback
     volumes:
-      - backend_database:/var/www/html/database
+      - backend_database:/var/www/html/database/data
       - backend_storage:/var/www/html/storage/app/public
     depends_on:
       - mailpit
