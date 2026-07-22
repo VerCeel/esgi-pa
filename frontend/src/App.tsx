@@ -1,4 +1,11 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom"
+import { AuroraBackground } from "@/components/AuroraBackground"
 import { Footer } from "@/components/Footer"
 import { Navbar } from "@/components/Navbar"
 import { GuestRoute, ProtectedRoute } from "@/components/ProtectedRoute"
@@ -21,8 +28,12 @@ import { ResetPasswordPage } from "@/pages/ResetPasswordPage"
 import { SharedAccountsPage } from "@/pages/SharedAccountsPage"
 
 function AppLayout() {
+  const { pathname } = useLocation()
+
   return (
     <div className="flex min-h-screen flex-col">
+      {/* La landing a déjà son aurora, intégrée au hero : on ne double pas le canvas WebGL. */}
+      {pathname !== "/" && <AuroraBackground />}
       <Navbar />
       <Routes>
         <Route path="/" element={<LandingPage />} />
