@@ -39,7 +39,7 @@ Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 've
 Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
     ->middleware('throttle:5,1');
 
-// Connexion sociale (Google / Apple) : deux étapes publiques.
+// Connexion sociale (Google / Github) : deux étapes publiques.
 // `redirect` envoie vers le fournisseur, `callback` reçoit son retour et repart
 // vers le SPA avec un token Sanctum. Le throttle limite l'abus de la boucle OAuth.
 Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])->middleware('throttle:10,1');
