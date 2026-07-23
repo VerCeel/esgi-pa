@@ -8,108 +8,9 @@ utilisateurs. Les prévisions de solde sont calculées mois par mois à partir d
 
 ---
 
-## 1. Diagramme des relations (ERD)
+## 1. Les tables
 
-```mermaid
-erDiagram
-    users ||--o{ accounts : "possède"
-    users ||--o{ account_shares : "invité (après acceptation)"
-    accounts ||--o{ expenses : "porte"
-    accounts ||--o{ incomes : "porte"
-    accounts ||--o{ account_shares : "partagé via"
-    expenses ||--o{ transaction_exceptions : "surchargé par (polymorphe)"
-    incomes  ||--o{ transaction_exceptions : "surchargé par (polymorphe)"
-
-    users {
-        bigint id PK
-        string name
-        string email UK
-        string avatar "nullable"
-        enum plan "FREE | PREMIUM (défaut FREE)"
-        string stripe_customer_id "nullable"
-        string stripe_subscription_id "nullable"
-        timestamp plan_ends_at "nullable"
-        timestamp email_verified_at "nullable"
-        string password "nullable (OAuth)"
-        string provider "nullable — google/github…"
-        string provider_id "nullable"
-        text two_factor_secret "nullable, chiffré"
-        text two_factor_recovery_codes "nullable, chiffré"
-        timestamp two_factor_confirmed_at "nullable"
-        string remember_token
-        timestamps created_at_updated_at
-    }
-
-    accounts {
-        bigint id PK
-        string name
-        string description "nullable"
-        date creation_date "nullable — date réelle d'ouverture"
-        decimal remuneration_rate "10,2 — taux de rémunération"
-        decimal tax_rate "10,2 — taux d'imposition"
-        bigint user_id FK
-        timestamps created_at_updated_at
-    }
-
-    expenses {
-        bigint id PK
-        string name
-        string description "nullable"
-        decimal amount "10,2"
-        enum frequency_type "ONCE | RECURRING"
-        integer frequency_months "nullable"
-        datetime start_date_time "nullable"
-        datetime end_date_time "nullable"
-        bigint account_id FK
-        timestamps created_at_updated_at
-    }
-
-    incomes {
-        bigint id PK
-        string name
-        string description "nullable"
-        decimal amount "10,2"
-        enum frequency_type "ONCE | RECURRING"
-        integer frequency_months "nullable"
-        datetime start_date_time
-        datetime end_date_time "nullable"
-        bigint account_id FK "ON DELETE CASCADE"
-        timestamps created_at_updated_at
-    }
-
-    transaction_exceptions {
-        bigint id PK
-        string name
-        string description "nullable"
-        decimal amount "10,2"
-        enum frequency_type "ONCE | RECURRING"
-        integer frequency_months "nullable"
-        datetime start_date_time
-        datetime end_date_time "nullable"
-        string exceptionable_type "Expense | Income (polymorphe)"
-        bigint exceptionable_id
-        timestamps created_at_updated_at
-    }
-
-    account_shares {
-        bigint id PK
-        bigint account_id FK "ON DELETE CASCADE"
-        string email "destinataire de l'invitation"
-        bigint user_id FK "nullable — rempli à l'acceptation"
-        string token UK "64 car."
-        timestamp accepted_at "nullable"
-        timestamps created_at_updated_at
-    }
-```
-
-> Le diagramme se rend automatiquement sur GitHub, GitLab et la plupart des éditeurs
-> Markdown compatibles Mermaid.
-
----
-
-## 2. Les tables
-
-### `users` — Utilisateurs
+### 2 `users` — Utilisateurs
 Table centrale des comptes utilisateurs. Elle porte plusieurs préoccupations transverses :
 
 | Domaine | Colonnes | Rôle |
@@ -149,14 +50,14 @@ Invitation à consulter un compte en **lecture seule**. C'est d'abord une invita
 `null` jusqu'à l'acceptation (`accepted_at`). Contraintes : `token` unique, et
 `(account_id, email)` unique — une seule invitation en cours par compte et par adresse.
 
-### Tables techniques (Laravel)
+### 3.Tables techniques (Laravel)
 Générées par le framework, hors métier : `password_reset_tokens`, `sessions`, `cache`,
 `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `personal_access_tokens` (jetons
 d'API Sanctum, relation polymorphe `tokenable`).
 
 ---
 
-## 3. Résumé des relations
+## 4. Résumé des relations
 
 | Relation | Type | Détail |
 |---|---|---|
@@ -170,7 +71,7 @@ d'API Sanctum, relation polymorphe `tokenable`).
 
 ---
 
-## 4. Points de conception
+## 5. Points de conception
 
 **Modélisation métier**
 - **Dépenses et revenus symétriques.** Les deux tables ont la même forme ; le calcul des
